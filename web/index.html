@@ -255,6 +255,44 @@
             color: #64748b;
             font-size: 0.875rem;
         }
+
+        @media (max-width: 400px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Mobile responsiveness for very small screens */
+        @media (max-width: 350px) {
+            body {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .section {
+                padding: 1rem;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            th, td {
+                padding: 0.5rem 0.25rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -317,19 +355,19 @@
                     <button class="tf-btn" onclick="switchTrends(72, this)">3d snapshots</button>
                     <button class="tf-btn" onclick="switchTrends(168, this)">7d snapshots</button>
                 </div>
-                <div id="trendsChart" class="chart-container"></div>
+                <div id="trendsChart" class="chart-container" aria-label="Trends by post type chart"></div>
             </div>
 
             <!-- Hourly Performance -->
             <div class="section">
                 <h2>&#x1F550; Impressions by Hour (UTC)</h2>
-                <div id="hourlyChart" class="chart-container"></div>
+                <div id="hourlyChart" class="chart-container" aria-label="Hourly performance chart"></div>
             </div>
 
             <!-- Daily Performance -->
             <div class="section">
                 <h2>📅 Impressions by Day of Week</h2>
-                <div id="dailyChart" class="chart-container"></div>
+                <div id="dailyChart" class="chart-container" aria-label="Daily performance chart"></div>
             </div>
 
             <!-- Top Posts -->
@@ -347,13 +385,14 @@
     <script>
         async function fetchData() {
             try {
+                const signal = AbortSignal.timeout(10000);
                 const [stats, performance, hourly, daily, topPosts, trends] = await Promise.all([
-                    fetch('/api/stats').then(r => r.json()),
-                    fetch('/api/performance/24').then(r => r.json()),
-                    fetch('/api/hourly-performance').then(r => r.json()),
-                    fetch('/api/daily-performance').then(r => r.json()),
-                    fetch('/api/top-posts?limit=10').then(r => r.json()),
-                    fetch('/api/trends/24').then(r => r.json())
+                    fetch('/api/stats', { signal }).then(r => r.json()),
+                    fetch('/api/performance/24', { signal }).then(r => r.json()),
+                    fetch('/api/hourly-performance', { signal }).then(r => r.json()),
+                    fetch('/api/daily-performance', { signal }).then(r => r.json()),
+                    fetch('/api/top-posts?limit=10', { signal }).then(r => r.json()),
+                    fetch('/api/trends/24', { signal }).then(r => r.json())
                 ]);
 
                 return { stats, performance, hourly, daily, topPosts, trends };
@@ -373,7 +412,8 @@
             btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             try {
-                const data = await fetch('/api/trends/' + hours).then(r => r.json());
+                const signal = AbortSignal.timeout(10000);
+                const data = await fetch('/api/trends/' + hours, { signal }).then(r => r.json());
                 renderTrendsChart(data);
             } catch(e) { console.error(e); }
         }
@@ -435,7 +475,8 @@
             document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             try {
-                const data = await fetch('/api/performance/' + hours).then(r => r.json());
+                const signal = AbortSignal.timeout(10000);
+                const data = await fetch('/api/performance/' + hours, { signal }).then(r => r.json());
                 renderPerformanceTable(data);
             } catch(e) {
                 console.error('Failed to load timeframe:', e);

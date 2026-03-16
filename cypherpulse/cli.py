@@ -9,7 +9,14 @@ from .db import get_stats, get_performance_by_type, get_top_posts
 
 
 def load_config():
-    """Load configuration from .env file."""
+    """Load configuration from .env file.
+    
+    Returns:
+        Tuple of (api_key, username)
+        
+    Raises:
+        SystemExit: If required environment variables are not set
+    """
     # Look for .env in current directory or parent
     env_path = Path.cwd() / ".env"
     if not env_path.exists():
@@ -32,19 +39,19 @@ def load_config():
 
 
 def cmd_scan():
-    """Scan for new tweets."""
+    """Scan for new tweets from configured username."""
     api_key, username = load_config()
     scan_tweets(username, api_key)
 
 
 def cmd_collect():
-    """Collect metric snapshots."""
+    """Collect metric snapshots for tracked tweets at their due measurement points."""
     api_key, _ = load_config()
     collect_snapshots(api_key)
 
 
 def cmd_report():
-    """Generate performance report."""
+    """Generate and print performance analytics report to console."""
     stats = get_stats()
     
     print("\n=== CypherPulse Analytics Report ===\n")
@@ -84,24 +91,36 @@ def cmd_report():
 
 
 def cmd_serve():
-    """Start the web dashboard server."""
+    """Start the web dashboard server.
+    
+    Binds to 127.0.0.1 by default for security (localhost only).
+    Set HOST=0.0.0.0 to allow external connections.
+    Set PORT to change the default port (8080).
+    """
     port = int(os.getenv("PORT", 8080))
+    host = os.getenv("HOST", "127.0.0.1")
     
     try:
         import uvicorn
         from .api import app
         
-        print(f"\n🚀 Starting CypherPulse dashboard at http://localhost:{port}")
+        print(f"\n🚀 Starting CypherPulse dashboard at http://{host}:{port}")
+        if host == "127.0.0.1":
+            print("   (Bound to localhost only — set HOST=0.0.0.0 to allow external access)")
         print("   Press Ctrl+C to stop\n")
         
-        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+        uvicorn.run(app, host=host, port=port, log_level="info")
     except ImportError:
         print("Error: uvicorn not installed. Run: pip install uvicorn")
         sys.exit(1)
 
 
 def main():
-    """Main CLI entry point."""
+    """Main CLI entry point.
+    
+    Parses command-line arguments and dispatches to appropriate command handler.
+    Available commands: scan, collect, report, serve
+    """
     if len(sys.argv) < 2:
         print("CypherPulse - X/Twitter Analytics Dashboard\n")
         print("Usage:")

@@ -1,22 +1,67 @@
 """Database management for CypherPulse."""
 
-import os
 import sqlite3
 import logging
 from pathlib import Path
 from typing import Optional, Dict, List, Any
 from contextlib import contextmanager
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = Path(os.getenv("DB_PATH", str(Path.home() / ".cypherpulse" / "analytics.db")))
+
+def _validate_db_path(path_str: str) -> Path:
+    """Validate database path against path traversal attacks.
+    
+    Args:
+        path_str: The path string to validate
+        
+    Returns:
+        Validated Path object
+        
+    Raises:
+        ValueError: If path contains traversal patterns or is unsafe
+    """
+    path = Path(path_str).resolve()
+    
+    # Check for path traversal patterns
+    if ".." in path.parts:
+        raise ValueError("Database path contains path traversal patterns (..)")
+    
+    # Ensure path is within user's home directory or current working directory
+    home = Path.home().resolve()
+    cwd = Path.cwd().resolve()
+    
+    if not (str(path).startswith(str(home)) or str(path).startswith(str(cwd))):
+        raise ValueError(f"Database path must be within home directory or working directory")
+    
+    return path
+
+
+# Validate DB_PATH environment variable if set
+_db_path_env = os.getenv("DB_PATH")
+if _db_path_env:
+    try:
+        DEFAULT_DB_PATH = _validate_db_path(_db_path_env)
+    except ValueError as e:
+        logger.error(f"Invalid DB_PATH environment variable: {e}")
+        DEFAULT_DB_PATH = Path.home() / ".cypherpulse" / "analytics.db"
+else:
+    DEFAULT_DB_PATH = Path.home() / ".cypherpulse" / "analytics.db"
 
 
 @contextmanager
 def get_db_context(db_path: Optional[str] = None):
-    """Context manager for database connections."""
+    """Context manager for database connections.
+    
+    Args:
+        db_path: Optional path to database file
+        
+    Yields:
+        sqlite3.Connection: Active database connection
+    """
     conn = get_db(db_path)
     try:
         yield conn
@@ -25,7 +70,14 @@ def get_db_context(db_path: Optional[str] = None):
 
 
 def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
-    """Get database connection with schema initialization."""
+    """Get database connection with schema initialization.
+    
+    Args:
+        db_path: Optional path to database file
+        
+    Returns:
+        sqlite3.Connection: Configured database connection
+    """
     if db_path is None:
         db_path = DEFAULT_DB_PATH
     else:
@@ -70,7 +122,14 @@ def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
 
 
 def get_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
-    """Get summary statistics."""
+    """Get summary statistics.
+    
+    Args:
+        db_path: Optional path to database file
+        
+    Returns:
+        Dict containing total_tweets, total_snapshots, and avg_impressions_24h
+    """
     with get_db_context(db_path) as conn:
         total_tweets = conn.execute(
             "SELECT COUNT(*) as cnt FROM tweet_performance"
@@ -93,7 +152,15 @@ def get_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
 
 
 def get_performance_by_type(snapshot_hours: int = 24, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get performance metrics grouped by post type."""
+    """Get performance metrics grouped by post type.
+    
+    Args:
+        snapshot_hours: Snapshot interval to query (24, 72, or 168)
+        db_path: Optional path to database file
+        
+    Returns:
+        List of dicts with post_type, posts count, and average engagement metrics
+    """
     with get_db_context(db_path) as conn:
         rows = conn.execute("""
             SELECT p.post_type,
@@ -114,7 +181,15 @@ def get_performance_by_type(snapshot_hours: int = 24, db_path: Optional[str] = N
 
 
 def get_top_posts(limit: int = 10, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get top posts by impressions."""
+    """Get top posts by impressions.
+    
+    Args:
+        limit: Maximum number of posts to return
+        db_path: Optional path to database file
+        
+    Returns:
+        List of top posts with tweet_id, post_type, text, and engagement metrics
+    """
     with get_db_context(db_path) as conn:
         rows = conn.execute("""
             SELECT p.tweet_id, p.post_type, p.tweet_text, p.posted_at,
@@ -132,7 +207,14 @@ def get_top_posts(limit: int = 10, db_path: Optional[str] = None) -> List[Dict[s
 
 
 def get_hourly_performance(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get performance by hour of day (UTC)."""
+    """Get performance by hour of day (UTC).
+    
+    Args:
+        db_path: Optional path to database file
+        
+    Returns:
+        List of dicts with hour_utc, posts count, and average metrics
+    """
     with get_db_context(db_path) as conn:
         rows = conn.execute("""
             SELECT CAST(strftime('%H', p.posted_at) AS INTEGER) as hour_utc,
@@ -150,7 +232,14 @@ def get_hourly_performance(db_path: Optional[str] = None) -> List[Dict[str, Any]
 
 
 def get_daily_performance(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get performance by day of week."""
+    """Get performance by day of week.
+    
+    Args:
+        db_path: Optional path to database file
+        
+    Returns:
+        List of dicts with dow, day_name, posts count, and average metrics
+    """
     with get_db_context(db_path) as conn:
         rows = conn.execute("""
             SELECT CAST(strftime('%w', p.posted_at) AS INTEGER) as dow,
@@ -176,7 +265,16 @@ def get_daily_performance(db_path: Optional[str] = None) -> List[Dict[str, Any]]
 
 
 def get_trends_by_type(snapshot_hours: int = 24, days: int = 30, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get engagement trends over time, grouped by post type."""
+    """Get engagement trends over time, grouped by post type.
+    
+    Args:
+        snapshot_hours: Snapshot interval to query (24, 72, or 168)
+        days: Number of days of history to include
+        db_path: Optional path to database file
+        
+    Returns:
+        List of dicts with post_date, post_type, posts count, and average metrics
+    """
     with get_db_context(db_path) as conn:
         rows = conn.execute("""
             SELECT date(p.posted_at) as post_date,

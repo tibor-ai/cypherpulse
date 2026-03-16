@@ -2,10 +2,11 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
+import os
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .db import (
     get_stats,
     get_performance_by_type,
@@ -21,10 +22,13 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="CypherPulse API", version="0.1.0")
 
-# CORS configuration - restrict in production
+# CORS configuration - read from environment variable
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET"],
     allow_headers=["*"],
@@ -48,8 +52,8 @@ async def api_stats():
     """Get summary statistics."""
     try:
         return JSONResponse(get_stats())
-    except Exception as e:
-        logger.error(f"Error fetching stats: {e}")
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch statistics")
 
 
@@ -61,8 +65,8 @@ async def api_performance(snapshot_hours: int):
     try:
         data = get_performance_by_type(snapshot_hours)
         return JSONResponse(data)
-    except Exception as e:
-        logger.error(f"Error fetching performance: {e}")
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching performance: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch performance data")
 
 
@@ -72,8 +76,8 @@ async def api_top_posts(limit: int = Query(default=10, ge=1, le=100)):
     try:
         data = get_top_posts(limit)
         return JSONResponse(data)
-    except Exception as e:
-        logger.error(f"Error fetching top posts: {e}")
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching top posts: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch top posts")
 
 
@@ -83,8 +87,8 @@ async def api_hourly():
     try:
         data = get_hourly_performance()
         return JSONResponse(data)
-    except Exception as e:
-        logger.error(f"Error fetching hourly performance: {e}")
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching hourly performance: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch hourly performance")
 
 
@@ -94,8 +98,8 @@ async def api_daily():
     try:
         data = get_daily_performance()
         return JSONResponse(data)
-    except Exception as e:
-        logger.error(f"Error fetching daily performance: {e}")
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching daily performance: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch daily performance")
 
 
@@ -110,8 +114,8 @@ async def api_trends(
     try:
         data = get_trends_by_type(snapshot_hours, days)
         return JSONResponse(data)
-    except Exception as e:
-        logger.error(f"Error fetching trends: {e}")
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching trends: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch trends")
 
 
