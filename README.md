@@ -1,5 +1,6 @@
 # CypherPulse
 
+[![Web Installer](https://img.shields.io/badge/🚀_Quick_Install-Web_Installer-4299e1?style=for-the-badge)](https://tibor-ai.github.io/cypherpulse/)
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 

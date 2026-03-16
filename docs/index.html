@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CypherPulse - Quick Install</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0e27;
+            color: #e0e6ed;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #4299e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #8892b0;
+            font-size: 1.1em;
+        }
+        
+        .github-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #4299e1;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: color 0.3s;
+        }
+        
+        .github-link:hover {
+            color: #667eea;
+        }
+        
+        .install-section {
+            background: #162033;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #4299e1;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .os-detected {
+            background: #1e2a3d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4299e1;
+        }
+        
+        .os-detected strong {
+            color: #4299e1;
+        }
+        
+        .command-box {
+            background: #0d1117;
+            border: 1px solid #2d3748;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        .command-box code {
+            font-family: 'Courier New', monospace;
+            color: #e0e6ed;
+            font-size: 0.95em;
+            display: block;
+            word-wrap: break-word;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background: #667eea;
+        }
+        
+        .copy-btn.copied {
+            background: #48bb78;
+        }
+        
+        .expandable {
+            margin-top: 20px;
+        }
+        
+        .expand-header {
+            background: #1e2a3d;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s;
+        }
+        
+        .expand-header:hover {
+            background: #2a3a52;
+        }
+        
+        .expand-icon {
+            transition: transform 0.3s;
+        }
+        
+        .expand-icon.open {
+            transform: rotate(180deg);
+        }
+        
+        .expand-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .expand-content.open {
+            max-height: 1000px;
+            padding-top: 20px;
+        }
+        
+        .python-install {
+            background: #1e2a3d;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .python-install h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .python-install ul {
+            margin-left: 20px;
+        }
+        
+        .python-install li {
+            margin: 8px 0;
+        }
+        
+        .warning {
+            background: #44337a;
+            border-left: 4px solid #9f7aea;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .warning strong {
+            color: #9f7aea;
+        }
+        
+        .steps {
+            margin-top: 20px;
+        }
+        
+        .step {
+            background: #1e2a3d;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .step h3 {
+            color: #48bb78;
+            margin-bottom: 10px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            background: #48bb78;
+            color: #0a0e27;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        a {
+            color: #4299e1;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid #2d3748;
+            color: #8892b0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ CypherPulse</h1>
+            <p class="subtitle">X/Twitter Analytics Dashboard - Quick Install</p>
+            <a href="https://github.com/tibor-ai/cypherpulse" class="github-link" target="_blank">
+                📦 View on GitHub
+            </a>
+        </header>
+        
+        <div class="install-section">
+            <h2>🚀 Quick Install</h2>
+            
+            <div class="os-detected" id="osDetected">
+                <strong>Detected OS:</strong> <span id="detectedOS">Detecting...</span>
+            </div>
+            
+            <div id="installCommand"></div>
+            
+            <div class="expandable">
+                <div class="expand-header" onclick="toggleExpand('pythonHelp')">
+                    <span>❓ Don't have Python installed?</span>
+                    <span class="expand-icon" id="pythonHelp-icon">▼</span>
+                </div>
+                <div class="expand-content" id="pythonHelp-content">
+                    <div id="pythonInstallInstructions"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="install-section">
+            <h2>📋 What happens next?</h2>
+            
+            <div class="steps">
+                <div class="step">
+                    <h3><span class="step-number">1</span>Clone & Setup</h3>
+                    <p>The installer downloads CypherPulse to your home directory and creates a Python virtual environment with all dependencies.</p>
+                </div>
+                
+                <div class="step">
+                    <h3><span class="step-number">2</span>Configure API</h3>
+                    <p>Get your free API key from <a href="https://twitterapi.io/" target="_blank">twitterapi.io</a> and add it to your <code>.env</code> file along with your Twitter username.</p>
+                </div>
+                
+                <div class="step">
+                    <h3><span class="step-number">3</span>Start Dashboard</h3>
+                    <p>Run <code>cypherpulse serve</code> to launch the web dashboard at <code>http://localhost:8080</code> and start tracking your tweet performance!</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Built with ⚡ by the open-source community</p>
+            <p><a href="https://github.com/tibor-ai/cypherpulse" target="_blank">github.com/tibor-ai/cypherpulse</a></p>
+        </footer>
+    </div>
+    
+    <script>
+        // OS Detection
+        function detectOS() {
+            const platform = navigator.platform.toLowerCase();
+            const userAgent = navigator.userAgent.toLowerCase();
+            
+            if (platform.includes('win') || userAgent.includes('windows')) {
+                return 'windows';
+            } else if (platform.includes('mac') || userAgent.includes('mac')) {
+                return 'macos';
+            } else if (platform.includes('linux') || userAgent.includes('linux')) {
+                return 'linux';
+            } else {
+                return 'unknown';
+            }
+        }
+        
+        // Display install command based on OS
+        function displayInstallCommand(os) {
+            const commands = {
+                windows: {
+                    name: 'Windows',
+                    command: 'irm https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.ps1 | iex',
+                    note: 'Run this in PowerShell as Administrator'
+                },
+                macos: {
+                    name: 'macOS',
+                    command: 'curl -fsSL https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.sh | bash',
+                    note: 'Paste this into your Terminal'
+                },
+                linux: {
+                    name: 'Linux (Ubuntu/Debian)',
+                    command: 'curl -fsSL https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.sh | bash',
+                    note: 'Paste this into your terminal'
+                },
+                unknown: {
+                    name: 'Unknown (showing Linux command)',
+                    command: 'curl -fsSL https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.sh | bash',
+                    note: 'If you\'re on Linux/macOS, use this. Windows users should use PowerShell.'
+                }
+            };
+            
+            const osInfo = commands[os];
+            document.getElementById('detectedOS').textContent = osInfo.name;
+            
+            document.getElementById('installCommand').innerHTML = `
+                <p style="margin-bottom: 10px; color: #8892b0;">${osInfo.note}:</p>
+                <div class="command-box">
+                    <code id="command-text">${osInfo.command}</code>
+                    <button class="copy-btn" onclick="copyCommand()">Copy</button>
+                </div>
+            `;
+        }
+        
+        // Display Python install instructions based on OS
+        function displayPythonInstructions(os) {
+            const instructions = {
+                windows: `
+                    <div class="python-install">
+                        <h3>Windows Installation</h3>
+                        <p><strong>Option 1: Download from python.org (Recommended)</strong></p>
+                        <ul>
+                            <li>Visit <a href="https://www.python.org/downloads/windows/" target="_blank">python.org/downloads/windows/</a></li>
+                            <li>Download the latest Python 3.11+ installer</li>
+                            <li>Run the installer</li>
+                        </ul>
+                        <div class="warning">
+                            <strong>⚠️ Important:</strong> During installation, make sure to check the box that says "Add Python to PATH" at the bottom of the first screen. This is crucial!
+                        </div>
+                        <p style="margin-top: 15px;"><strong>Option 2: Using winget (Windows 11)</strong></p>
+                        <div class="command-box" style="margin-top: 10px;">
+                            <code>winget install Python.Python.3.12</code>
+                        </div>
+                    </div>
+                `,
+                macos: `
+                    <div class="python-install">
+                        <h3>macOS Installation</h3>
+                        <p><strong>Option 1: Using Homebrew (Recommended)</strong></p>
+                        <div class="command-box" style="margin: 10px 0;">
+                            <code>brew install python3</code>
+                        </div>
+                        <p style="margin-top: 10px;">Don't have Homebrew? Install it first:</p>
+                        <div class="command-box" style="margin: 10px 0;">
+                            <code>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</code>
+                        </div>
+                        <p style="margin-top: 15px;"><strong>Option 2: Download from python.org</strong></p>
+                        <ul>
+                            <li>Visit <a href="https://www.python.org/downloads/mac-osx/" target="_blank">python.org/downloads/mac-osx/</a></li>
+                            <li>Download the latest macOS installer</li>
+                            <li>Run the .pkg file and follow the instructions</li>
+                        </ul>
+                    </div>
+                `,
+                linux: `
+                    <div class="python-install">
+                        <h3>Ubuntu/Debian Installation</h3>
+                        <p>Install Python and required packages:</p>
+                        <div class="command-box" style="margin: 10px 0;">
+                            <code>sudo apt install python3 python3-pip python3-venv</code>
+                        </div>
+                        <p style="margin-top: 10px; color: #8892b0;">This will install Python 3, pip (package manager), and venv (virtual environment support).</p>
+                    </div>
+                `,
+                unknown: `
+                    <div class="python-install">
+                        <h3>Python Installation</h3>
+                        <p>Please visit <a href="https://www.python.org/downloads/" target="_blank">python.org/downloads/</a> to download Python 3.9 or newer for your operating system.</p>
+                    </div>
+                `
+            };
+            
+            document.getElementById('pythonInstallInstructions').innerHTML = instructions[os];
+        }
+        
+        // Copy command to clipboard
+        function copyCommand() {
+            const commandText = document.getElementById('command-text').textContent;
+            navigator.clipboard.writeText(commandText).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        // Toggle expandable sections
+        function toggleExpand(sectionId) {
+            const content = document.getElementById(sectionId + '-content');
+            const icon = document.getElementById(sectionId + '-icon');
+            
+            content.classList.toggle('open');
+            icon.classList.toggle('open');
+        }
+        
+        // Initialize on page load
+        window.onload = function() {
+            const os = detectOS();
+            displayInstallCommand(os);
+            displayPythonInstructions(os);
+        };
+    </script>
+</body>
+</html>

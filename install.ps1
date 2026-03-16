@@ -38,19 +38,70 @@ if (-not (Test-PythonVersion)) {
     Write-Host ""
     Write-Host "Python 3.9+ is required but not found." -ForegroundColor Red
     Write-Host ""
-    Write-Host "Please install Python:" -ForegroundColor Yellow
-    Write-Host "  1. Visit: https://www.python.org/downloads/" -ForegroundColor Yellow
-    Write-Host "  2. Download Python 3.11 or newer" -ForegroundColor Yellow
-    Write-Host "  3. During installation, check 'Add Python to PATH'" -ForegroundColor Yellow
-    Write-Host "  4. Run this script again after installation" -ForegroundColor Yellow
-    Write-Host ""
     
-    $openBrowser = Read-Host "Open Python download page in browser? (Y/n)"
-    if ($openBrowser -ne "n") {
-        Start-Process "https://www.python.org/downloads/"
+    # Check if winget is available (Windows 11 and some Windows 10 versions)
+    $wingetAvailable = $false
+    try {
+        $wingetVersion = winget --version 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $wingetAvailable = $true
+        }
+    } catch {
+        $wingetAvailable = $false
     }
     
-    exit 1
+    if ($wingetAvailable) {
+        Write-Host "winget package manager detected." -ForegroundColor Green
+        Write-Host ""
+        $installWithWinget = Read-Host "Install Python automatically using winget? (Y/n)"
+        
+        if ($installWithWinget -ne "n" -and $installWithWinget -ne "N") {
+            Write-Host ""
+            Write-Host "Installing Python 3.12 via winget..." -ForegroundColor Cyan
+            
+            try {
+                winget install Python.Python.3.12 --silent
+                
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host ""
+                    Write-Host "✓ Python installed successfully!" -ForegroundColor Green
+                    Write-Host ""
+                    Write-Host "Please close this PowerShell window and open a NEW one," -ForegroundColor Yellow
+                    Write-Host "then re-run this installation script." -ForegroundColor Yellow
+                    Write-Host ""
+                    Write-Host "This is necessary for the PATH changes to take effect." -ForegroundColor Gray
+                    exit 0
+                } else {
+                    Write-Host "✗ winget installation failed" -ForegroundColor Red
+                    Write-Host "Falling back to manual installation..." -ForegroundColor Yellow
+                }
+            } catch {
+                Write-Host "✗ winget installation failed: $_" -ForegroundColor Red
+                Write-Host "Falling back to manual installation..." -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    # Manual installation fallback
+    Write-Host ""
+    Write-Host "Please install Python manually:" -ForegroundColor Yellow
+    Write-Host "  1. Visit: https://www.python.org/downloads/windows/" -ForegroundColor White
+    Write-Host "  2. Download Python 3.11 or newer" -ForegroundColor White
+    Write-Host "  3. Run the installer" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  ⚠️  IMPORTANT: During installation, CHECK the box that says:" -ForegroundColor Yellow
+    Write-Host "      'Add Python to PATH' (at the bottom of the first screen)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  4. After installation, close this window and open a NEW PowerShell" -ForegroundColor White
+    Write-Host "  5. Re-run this installation script" -ForegroundColor White
+    Write-Host ""
+    
+    Write-Host "Opening Python download page in your browser..." -ForegroundColor Cyan
+    Start-Process "https://www.python.org/downloads/windows/"
+    
+    Write-Host ""
+    Write-Host "After installing Python, re-run this script." -ForegroundColor Green
+    exit 0
 }
 
 Write-Host ""

@@ -57,30 +57,81 @@ check_python() {
 # Install Python if needed
 if ! check_python; then
     echo ""
-    echo "Installing Python 3.9+..."
+    echo "Python 3.9+ is required but not found."
+    echo ""
     
     if [ "$OS" == "linux" ]; then
-        echo "Running: sudo apt update && sudo apt install -y python3 python3-pip python3-venv"
-        sudo apt update
-        sudo apt install -y python3 python3-pip python3-venv
-    elif [ "$OS" == "macos" ]; then
-        if command -v brew &> /dev/null; then
-            echo "Running: brew install python@3.11"
-            brew install python@3.11
+        echo "Would you like to install Python now? (Y/n)"
+        read -n 1 -r INSTALL_PYTHON
+        echo
+        
+        if [[ ! $INSTALL_PYTHON =~ ^[Nn]$ ]]; then
+            echo "Installing Python..."
+            echo "Running: sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv"
+            
+            if sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv; then
+                echo -e "${GREEN}✓ Python installed successfully${NC}"
+                
+                # Re-check Python version
+                if check_python; then
+                    echo -e "${GREEN}✓ Python is now ready${NC}"
+                else
+                    echo -e "${YELLOW}⚠ Python installed but version check failed${NC}"
+                    echo "You may need to restart your terminal and run this script again."
+                    exit 1
+                fi
+            else
+                echo -e "${RED}✗ Failed to install Python${NC}"
+                exit 1
+            fi
         else
-            echo -e "${RED}✗ Homebrew not found${NC}"
-            echo "Please install Python 3.9+ manually:"
-            echo "  1. Install Homebrew: https://brew.sh"
-            echo "  2. Run: brew install python@3.11"
-            echo "Or download from: https://www.python.org/downloads/"
+            echo "Installation cancelled. Please install Python manually and run this script again."
             exit 1
         fi
-    fi
-    
-    # Verify installation
-    if ! check_python; then
-        echo -e "${RED}✗ Python installation failed${NC}"
-        exit 1
+        
+    elif [ "$OS" == "macos" ]; then
+        if command -v brew &> /dev/null; then
+            echo "Would you like to install Python using Homebrew? (Y/n)"
+            read -n 1 -r INSTALL_PYTHON
+            echo
+            
+            if [[ ! $INSTALL_PYTHON =~ ^[Nn]$ ]]; then
+                echo "Running: brew install python@3.11"
+                if brew install python@3.11; then
+                    echo -e "${GREEN}✓ Python installed successfully${NC}"
+                    
+                    # Re-check Python version
+                    if check_python; then
+                        echo -e "${GREEN}✓ Python is now ready${NC}"
+                    else
+                        echo -e "${YELLOW}⚠ Python installed but not in PATH${NC}"
+                        echo "You may need to restart your terminal and run this script again."
+                        exit 1
+                    fi
+                else
+                    echo -e "${RED}✗ Homebrew installation failed${NC}"
+                    exit 1
+                fi
+            else
+                echo "Installation cancelled."
+                exit 1
+            fi
+        else
+            echo -e "${YELLOW}⚠ Homebrew not found${NC}"
+            echo ""
+            echo "To install Python on macOS, you have two options:"
+            echo ""
+            echo "Option 1 (Recommended): Install Homebrew, then install Python"
+            echo "  1. Install Homebrew: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+            echo "  2. Then run: brew install python@3.11"
+            echo ""
+            echo "Option 2: Download Python directly from python.org"
+            echo "  Visit: https://www.python.org/downloads/mac-osx/"
+            echo "  Download the latest macOS installer and follow the instructions"
+            echo ""
+            echo "After installing Python, run this script again."
+            exit 1
+        fi
     fi
 fi
 
