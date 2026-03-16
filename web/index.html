@@ -82,6 +82,19 @@
             backdrop-filter: blur(10px);
         }
 
+        .tf-btn {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #94a3b8;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .tf-btn:hover { border-color: rgba(59,130,246,0.5); color: #e2e8f0; }
+        .tf-btn.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; color: #93c5fd; }
+
         h2 {
             color: #f1f5f9;
             font-size: 1.5rem;
@@ -275,7 +288,12 @@
 
             <!-- Performance by Type -->
             <div class="section">
-                <h2>📊 Performance by Post Type (24h)</h2>
+                <h2>&#x1F4CA; Performance by Post Type</h2>
+                <div style="display:flex;gap:8px;margin-bottom:16px;">
+                    <button class="tf-btn active" onclick="switchTimeframe(24, this)">24h</button>
+                    <button class="tf-btn" onclick="switchTimeframe(72, this)">3 days</button>
+                    <button class="tf-btn" onclick="switchTimeframe(168, this)">7 days</button>
+                </div>
                 <table id="performanceTable">
                     <thead>
                         <tr>
@@ -337,6 +355,17 @@
             document.getElementById('totalTweets').textContent = stats.total_tweets.toLocaleString();
             document.getElementById('totalSnapshots').textContent = stats.total_snapshots.toLocaleString();
             document.getElementById('avgImpressions').textContent = Math.round(stats.avg_impressions_24h).toLocaleString();
+        }
+
+        async function switchTimeframe(hours, btn) {
+            document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            try {
+                const data = await fetch('/api/performance/' + hours).then(r => r.json());
+                renderPerformanceTable(data);
+            } catch(e) {
+                console.error('Failed to load timeframe:', e);
+            }
         }
 
         function renderPerformanceTable(data) {
