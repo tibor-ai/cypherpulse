@@ -18,7 +18,26 @@ CypherPulse automatically collects engagement metrics at 24h, 72h, and 7-day int
 
 ## 🚀 Quick Start
 
-### Installation
+### ⚡ Quick Install
+
+**Ubuntu / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.sh | bash
+```
+
+**Windows (PowerShell as Administrator):**
+```powershell
+irm https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.ps1 | iex
+```
+
+**Tested on:** Ubuntu 22.04+, macOS 13+, Windows 11
+
+---
+
+### 📦 Manual Installation
+
+<details>
+<summary>Click to expand manual installation steps</summary>
 
 ```bash
 # Clone the repository
@@ -31,6 +50,8 @@ pip install -r requirements.txt
 # Or install as a package
 pip install -e .
 ```
+
+</details>
 
 ### Configuration
 
