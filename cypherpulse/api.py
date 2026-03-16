@@ -40,7 +40,7 @@ app.add_middleware(
 WEB_DIR = Path(__file__).parent.parent / "web"
 
 
-@app.get("/")
+@app.get("/", response_model=None)
 async def root() -> Union[FileResponse, Dict[str, str]]:
     """Serve the dashboard."""
     index_file = WEB_DIR / "index.html"
