@@ -146,25 +146,18 @@ else
     TWITTER_USER="$REPLY"
 fi
 
-# Write to .env
-python3 - <<PYEOF
-import re
-
-with open('$ENV_FILE', 'r') as f:
-    content = f.read()
-
-content = re.sub(r'^TWITTER_API_KEY=.*', 'TWITTER_API_KEY=$API_KEY', content, flags=re.MULTILINE)
-content = re.sub(r'^TWITTER_USERNAME=.*', 'TWITTER_USERNAME=$TWITTER_USER', content, flags=re.MULTILINE)
-
-# Add keys if not present
-if 'TWITTER_API_KEY=' not in content:
-    content += '\nTWITTER_API_KEY=$API_KEY\n'
-if 'TWITTER_USERNAME=' not in content:
-    content += '\nTWITTER_USERNAME=$TWITTER_USER\n'
-
-with open('$ENV_FILE', 'w') as f:
-    f.write(content)
-PYEOF
+# Write to .env using sed (no heredoc, safe for curl|bash)
+if grep -q "^TWITTER_API_KEY=" "$ENV_FILE"; then
+    sed -i.bak "s|^TWITTER_API_KEY=.*|TWITTER_API_KEY=$API_KEY|" "$ENV_FILE"
+else
+    printf '\nTWITTER_API_KEY=%s\n' "$API_KEY" >> "$ENV_FILE"
+fi
+if grep -q "^TWITTER_USERNAME=" "$ENV_FILE"; then
+    sed -i.bak "s|^TWITTER_USERNAME=.*|TWITTER_USERNAME=$TWITTER_USER|" "$ENV_FILE"
+else
+    printf '\nTWITTER_USERNAME=%s\n' "$TWITTER_USER" >> "$ENV_FILE"
+fi
+rm -f "$ENV_FILE.bak"
 
 ok "Config saved"
 
