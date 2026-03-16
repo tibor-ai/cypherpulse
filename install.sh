@@ -5,7 +5,7 @@
 set -e
 
 REPO_URL="https://github.com/tibor-ai/cypherpulse.git"
-INSTALL_DIR="$HOME/cypherpulse"
+DEFAULT_DIR="$(pwd)/cypherpulse"
 
 # ---------- helpers ----------
 msg()  { printf '%s\n' "$1"; }
@@ -40,6 +40,16 @@ case "$OSTYPE" in
     *) die "Unsupported OS: $OSTYPE. Supports Ubuntu/Debian and macOS only." ;;
 esac
 ok "Detected OS: $OS"
+
+# ---------- install location ----------
+msg ""
+ask "Install directory [default: $DEFAULT_DIR]:"
+if [ -n "$REPLY" ]; then
+    INSTALL_DIR="$REPLY"
+else
+    INSTALL_DIR="$DEFAULT_DIR"
+fi
+msg "Installing to: $INSTALL_DIR"
 
 # ---------- python ----------
 python_version_ok() {
