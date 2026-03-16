@@ -197,8 +197,8 @@ if [ "$SCHED" = "yes" ]; then
         *) CRON_EXPR="0 9 * * *";   FREQ_DESC="daily at 9am" ;;
     esac
 
-    CRON_CMD="cd $INSTALL_DIR && source venv/bin/activate && cypherpulse scan && cypherpulse collect >> $INSTALL_DIR/cypherpulse.log 2>&1"
-    ( crontab -l 2>/dev/null; echo "$CRON_EXPR $CRON_CMD" ) | crontab -
+    CRON_CMD="$INSTALL_DIR/venv/bin/cypherpulse scan && $INSTALL_DIR/venv/bin/cypherpulse collect >> $INSTALL_DIR/cypherpulse.log 2>&1"
+    ( crontab -l 2>/dev/null || true; echo "$CRON_EXPR $CRON_CMD" ) | crontab -
     ok "Cron job added ($FREQ_DESC)"
 else
     msg "Skipped. To add later: crontab -e"
