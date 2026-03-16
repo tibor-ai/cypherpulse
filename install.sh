@@ -140,7 +140,7 @@ else
 fi
 
 # Prompt for username
-if [ -n "$EXISTING_USER" ] && [ "$EXISTING_USER" != "your_twitter_username" ]; then
+if [ -n "$EXISTING_USER" ] && [ "$EXISTING_USER" != "your_username" ]; then
     ok "Username already set: $EXISTING_USER"
     TWITTER_USER="$EXISTING_USER"
 else
