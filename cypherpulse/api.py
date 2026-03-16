@@ -10,7 +10,8 @@ from .db import (
     get_performance_by_type,
     get_top_posts,
     get_hourly_performance,
-    get_daily_performance
+    get_daily_performance,
+    get_trends_by_type
 )
 
 app = FastAPI(title="CypherPulse API", version="0.1.0")
@@ -72,6 +73,16 @@ async def api_daily():
     """Get performance by day of week."""
     try:
         data = get_daily_performance()
+        return JSONResponse(data)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/trends/{snapshot_hours}")
+async def api_trends(snapshot_hours: int, days: int = 30):
+    """Get engagement trends over time by post type."""
+    try:
+        data = get_trends_by_type(snapshot_hours, days)
         return JSONResponse(data)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

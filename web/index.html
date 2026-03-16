@@ -309,9 +309,20 @@
                 </table>
             </div>
 
+            <!-- Trends by Type -->
+            <div class="section">
+                <h2>&#x1F4C8; Trends by Post Type</h2>
+                <div style="display:flex;gap:8px;margin-bottom:16px;">
+                    <button class="tf-btn active" onclick="switchTrends(24, this)">24h snapshots</button>
+                    <button class="tf-btn" onclick="switchTrends(72, this)">3d snapshots</button>
+                    <button class="tf-btn" onclick="switchTrends(168, this)">7d snapshots</button>
+                </div>
+                <div id="trendsChart" class="chart-container"></div>
+            </div>
+
             <!-- Hourly Performance -->
             <div class="section">
-                <h2>🕐 Impressions by Hour (UTC)</h2>
+                <h2>&#x1F550; Impressions by Hour (UTC)</h2>
                 <div id="hourlyChart" class="chart-container"></div>
             </div>
 
@@ -336,15 +347,16 @@
     <script>
         async function fetchData() {
             try {
-                const [stats, performance, hourly, daily, topPosts] = await Promise.all([
+                const [stats, performance, hourly, daily, topPosts, trends] = await Promise.all([
                     fetch('/api/stats').then(r => r.json()),
                     fetch('/api/performance/24').then(r => r.json()),
                     fetch('/api/hourly-performance').then(r => r.json()),
                     fetch('/api/daily-performance').then(r => r.json()),
-                    fetch('/api/top-posts?limit=10').then(r => r.json())
+                    fetch('/api/top-posts?limit=10').then(r => r.json()),
+                    fetch('/api/trends/24').then(r => r.json())
                 ]);
 
-                return { stats, performance, hourly, daily, topPosts };
+                return { stats, performance, hourly, daily, topPosts, trends };
             } catch (error) {
                 console.error('Error fetching data:', error);
                 return null;
@@ -355,6 +367,68 @@
             document.getElementById('totalTweets').textContent = stats.total_tweets.toLocaleString();
             document.getElementById('totalSnapshots').textContent = stats.total_snapshots.toLocaleString();
             document.getElementById('avgImpressions').textContent = Math.round(stats.avg_impressions_24h).toLocaleString();
+        }
+
+        async function switchTrends(hours, btn) {
+            btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            try {
+                const data = await fetch('/api/trends/' + hours).then(r => r.json());
+                renderTrendsChart(data);
+            } catch(e) { console.error(e); }
+        }
+
+        function renderTrendsChart(rows) {
+            const el = document.getElementById('trendsChart');
+            if (!rows || rows.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No trend data yet — check back after snapshots are collected.</p>';
+                return;
+            }
+
+            // Group by type
+            const types = [...new Set(rows.map(r => r.post_type))];
+            const dates = [...new Set(rows.map(r => r.post_date))].sort();
+            const colors = { tweet: '#3b82f6', reply: '#8b5cf6', retweet: '#10b981' };
+
+            const byType = {};
+            types.forEach(t => {
+                byType[t] = {};
+                rows.filter(r => r.post_type === t).forEach(r => { byType[t][r.post_date] = r; });
+            });
+
+            const maxImpr = Math.max(...rows.map(r => r.avg_impressions || 0), 1);
+            const barW = Math.max(8, Math.floor(560 / (dates.length * types.length + dates.length)));
+            const chartH = 200;
+
+            let bars = '';
+            let labels = '';
+            let legend = '';
+            const groupW = types.length * barW + 4;
+
+            dates.forEach((date, di) => {
+                const x0 = di * (groupW + 8);
+                types.forEach((type, ti) => {
+                    const d = byType[type][date];
+                    const val = d ? (d.avg_impressions || 0) : 0;
+                    const h = Math.max(2, Math.round((val / maxImpr) * chartH));
+                    const x = x0 + ti * barW;
+                    const color = colors[type] || '#94a3b8';
+                    bars += `<rect x="${x}" y="${chartH - h}" width="${barW - 2}" height="${h}" fill="${color}" opacity="0.8" rx="2"><title>${type}: ${val} avg impressions on ${date}</title></rect>`;
+                });
+                const shortDate = date.slice(5); // MM-DD
+                labels += `<text x="${x0 + groupW/2}" y="${chartH + 16}" text-anchor="middle" fill="#64748b" font-size="10">${shortDate}</text>`;
+            });
+
+            types.forEach((type, i) => {
+                const color = colors[type] || '#94a3b8';
+                legend += `<rect x="${i * 90}" y="0" width="10" height="10" fill="${color}" rx="2"/><text x="${i * 90 + 14}" y="9" fill="#94a3b8" font-size="12">${type}</text>`;
+            });
+
+            const svgW = Math.max(500, dates.length * (groupW + 8));
+            el.innerHTML = `<div style="overflow-x:auto"><svg width="${svgW}" height="${chartH + 40}" style="display:block">
+                <g transform="translate(10,8)">${bars}${labels}</g>
+                <g transform="translate(10,${chartH + 32})">${legend}</g>
+            </svg></div>`;
         }
 
         async function switchTimeframe(hours, btn) {
@@ -445,6 +519,7 @@
 
             renderStats(data.stats);
             renderPerformanceTable(data.performance);
+            renderTrendsChart(data.trends);
 
             // Render hourly chart
             if (data.hourly.length > 0) {

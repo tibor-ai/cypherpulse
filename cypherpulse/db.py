@@ -168,3 +168,26 @@ def get_daily_performance(db_path: Optional[str] = None):
         }
         for row in rows
     ]
+
+
+def get_trends_by_type(snapshot_hours: int = 24, days: int = 30, db_path: Optional[str] = None):
+    """Get engagement trends over time, grouped by post type."""
+    conn = get_db(db_path)
+
+    rows = conn.execute("""
+        SELECT date(p.posted_at) as post_date,
+               p.post_type,
+               COUNT(*) as posts,
+               ROUND(AVG(s.impressions), 1) as avg_impressions,
+               ROUND(AVG(s.likes), 1) as avg_likes,
+               ROUND(AVG(s.retweets), 1) as avg_retweets
+        FROM tweet_snapshots s
+        JOIN tweet_performance p ON p.tweet_id = s.tweet_id
+        WHERE s.snapshot_hours = ?
+          AND p.posted_at >= date('now', ? || ' days')
+        GROUP BY post_date, p.post_type
+        ORDER BY post_date ASC, p.post_type
+    """, (snapshot_hours, -days)).fetchall()
+
+    conn.close()
+    return [dict(row) for row in rows]
