@@ -211,6 +211,62 @@ fi
 
 echo ""
 echo "════════════════════════════════════════════════════"
+echo "⏰ Set up automatic data collection?"
+echo "════════════════════════════════════════════════════"
+echo ""
+
+read -p "Would you like CypherPulse to run automatically? (recommended) [Y/n]: " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+    echo ""
+    echo "How often should CypherPulse collect data?"
+    echo "  1 = Hourly (best for active accounts)"
+    echo "  2 = Every 6 hours"
+    echo "  3 = Daily at 9 AM (default, recommended)"
+    echo "  4 = Custom cron expression"
+    echo ""
+    read -p "Choose frequency [1-4] (default: 3): " FREQ_CHOICE
+    
+    case "${FREQ_CHOICE:-3}" in
+        1)
+            CRON_EXPRESSION="0 * * * *"
+            FREQUENCY_DESC="hourly"
+            ;;
+        2)
+            CRON_EXPRESSION="0 */6 * * *"
+            FREQUENCY_DESC="every 6 hours"
+            ;;
+        3)
+            CRON_EXPRESSION="0 9 * * *"
+            FREQUENCY_DESC="daily at 9 AM"
+            ;;
+        4)
+            echo ""
+            echo "Enter your custom cron expression (e.g., '0 9 * * *' for daily at 9 AM):"
+            read -p "> " CRON_EXPRESSION
+            FREQUENCY_DESC="custom schedule"
+            ;;
+        *)
+            CRON_EXPRESSION="0 9 * * *"
+            FREQUENCY_DESC="daily at 9 AM"
+            ;;
+    esac
+    
+    CYPHERPULSE_DIR="$HOME/cypherpulse"
+    CRON_CMD="cd $CYPHERPULSE_DIR && source venv/bin/activate && cypherpulse scan && cypherpulse collect"
+    
+    # Add cron job
+    (crontab -l 2>/dev/null; echo "$CRON_EXPRESSION $CRON_CMD") | crontab -
+    
+    echo ""
+    echo -e "${GREEN}✓ Cron job added. CypherPulse will collect data automatically ($FREQUENCY_DESC).${NC}"
+else
+    echo ""
+    echo "You can set this up later with: cypherpulse schedule"
+fi
+
+echo ""
+echo "════════════════════════════════════════════════════"
 echo -e "${GREEN}✓ Installation complete!${NC}"
 echo "════════════════════════════════════════════════════"
 echo ""

@@ -35,6 +35,111 @@ irm https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.ps1 | ie
 
 ---
 
+## ⏰ Automated Scheduling
+
+CypherPulse works best when it collects data automatically. The install scripts offer to set this up for you, but you can also configure it manually.
+
+### Why automate?
+
+- **Consistent tracking** — Never miss a snapshot window (24h, 72h, 7d)
+- **Better insights** — Regular collection builds a complete performance history
+- **Set and forget** — No need to remember to run `collect` manually
+
+**Recommended frequency:**
+- **Hourly** — Best for active accounts (10+ tweets/day)
+- **Daily** — Perfect for most users (1-5 tweets/day)
+
+### Automatic Setup (During Install)
+
+Both install scripts will prompt you to set up automated collection:
+
+- **Linux/macOS** — Adds a cron job
+- **Windows** — Creates a Windows Task Scheduler task
+
+Just say "yes" during installation and choose your preferred frequency.
+
+### Manual Setup
+
+If you skipped automatic setup or want to change the schedule later:
+
+#### Linux / macOS (crontab)
+
+```bash
+# Open crontab editor
+crontab -e
+
+# Add one of these lines:
+
+# Hourly (for active accounts)
+0 * * * * cd ~/cypherpulse && source venv/bin/activate && cypherpulse scan && cypherpulse collect
+
+# Daily at 9 AM (recommended for most users)
+0 9 * * * cd ~/cypherpulse && source venv/bin/activate && cypherpulse scan && cypherpulse collect
+
+# Every 6 hours
+0 */6 * * * cd ~/cypherpulse && source venv/bin/activate && cypherpulse scan && cypherpulse collect
+```
+
+#### Windows (Task Scheduler)
+
+**Option 1: PowerShell (Recommended)**
+
+Run this in PowerShell as Administrator:
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "powershell.exe" `
+  -Argument "-WindowStyle Hidden -Command `"cd $env:USERPROFILE\cypherpulse; .\venv\Scripts\activate; cypherpulse scan; cypherpulse collect`""
+
+# Daily at 9 AM
+$trigger = New-ScheduledTaskTrigger -Daily -At "9:00AM"
+
+# OR for hourly:
+# $trigger = New-ScheduledTaskTrigger -Once -At "9:00AM" -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
+
+Register-ScheduledTask -TaskName "CypherPulse" -Action $action -Trigger $trigger -Force
+```
+
+**Option 2: Command Line (schtasks)**
+
+```cmd
+REM Daily at 9 AM
+schtasks /create /tn "CypherPulse" /tr "powershell.exe -WindowStyle Hidden -Command \"cd %USERPROFILE%\cypherpulse; .\venv\Scripts\activate; cypherpulse scan; cypherpulse collect\"" /sc daily /st 09:00 /f
+
+REM Hourly
+schtasks /create /tn "CypherPulse" /tr "powershell.exe -WindowStyle Hidden -Command \"cd %USERPROFILE%\cypherpulse; .\venv\Scripts\activate; cypherpulse scan; cypherpulse collect\"" /sc hourly /f
+```
+
+### What Gets Automated?
+
+The scheduled task runs two commands:
+
+1. **`cypherpulse scan`** — Discovers new tweets from your account
+2. **`cypherpulse collect`** — Takes snapshots of tweets that are due (24h, 72h, 7d after posting)
+
+**Note:** The web dashboard (`cypherpulse serve`) is NOT automated — run it manually when you want to view your analytics.
+
+### Verify It's Working
+
+**Linux/macOS:**
+```bash
+# List your cron jobs
+crontab -l
+
+# Check if cron service is running
+sudo systemctl status cron  # or 'crond' on some systems
+```
+
+**Windows:**
+```powershell
+# List scheduled tasks
+Get-ScheduledTask -TaskName "CypherPulse"
+
+# View task details
+Get-ScheduledTaskInfo -TaskName "CypherPulse"
+```
+
+---
+
 ### 📦 Manual Installation
 
 <details>

@@ -223,6 +223,94 @@ if (-not (Test-Path ".env")) {
 
 Write-Host ""
 Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "⏰ Set up automatic data collection?" -ForegroundColor Cyan
+Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host ""
+
+$schedule = Read-Host "Would you like CypherPulse to run automatically? (recommended) [Y/n]"
+
+if ($schedule -ne "n" -and $schedule -ne "N") {
+    Write-Host ""
+    Write-Host "How often should CypherPulse collect data?" -ForegroundColor Cyan
+    Write-Host "  1 = Hourly (best for active accounts)" -ForegroundColor White
+    Write-Host "  2 = Every 6 hours" -ForegroundColor White
+    Write-Host "  3 = Daily at 9 AM (default, recommended)" -ForegroundColor White
+    Write-Host "  4 = Custom schedule" -ForegroundColor White
+    Write-Host ""
+    
+    $freqChoice = Read-Host "Choose frequency [1-4] (default: 3)"
+    if ([string]::IsNullOrEmpty($freqChoice)) { $freqChoice = "3" }
+    
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" `
+        -Argument "-WindowStyle Hidden -Command `"cd $InstallDir; .\venv\Scripts\activate; cypherpulse scan; cypherpulse collect`""
+    
+    switch ($freqChoice) {
+        "1" {
+            $trigger = New-ScheduledTaskTrigger -Once -At "9:00AM" -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
+            $freqDesc = "hourly"
+        }
+        "2" {
+            $trigger = New-ScheduledTaskTrigger -Once -At "9:00AM" -RepetitionInterval (New-TimeSpan -Hours 6) -RepetitionDuration ([TimeSpan]::MaxValue)
+            $freqDesc = "every 6 hours"
+        }
+        "3" {
+            $trigger = New-ScheduledTaskTrigger -Daily -At "9:00AM"
+            $freqDesc = "daily at 9 AM"
+        }
+        "4" {
+            Write-Host ""
+            Write-Host "Custom scheduling options:" -ForegroundColor Cyan
+            Write-Host "  1 = Daily at custom time" -ForegroundColor White
+            Write-Host "  2 = Weekly on specific day" -ForegroundColor White
+            Write-Host "  3 = Hourly (with custom start time)" -ForegroundColor White
+            
+            $customType = Read-Host "Choose option [1-3]"
+            
+            switch ($customType) {
+                "1" {
+                    $customTime = Read-Host "Enter time (e.g., 2:30PM)"
+                    $trigger = New-ScheduledTaskTrigger -Daily -At $customTime
+                    $freqDesc = "daily at $customTime"
+                }
+                "2" {
+                    $customDay = Read-Host "Enter day (e.g., Monday)"
+                    $customTime = Read-Host "Enter time (e.g., 9:00AM)"
+                    $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $customDay -At $customTime
+                    $freqDesc = "weekly on $customDay at $customTime"
+                }
+                "3" {
+                    $customTime = Read-Host "Enter start time (e.g., 9:00AM)"
+                    $trigger = New-ScheduledTaskTrigger -Once -At $customTime -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
+                    $freqDesc = "hourly starting at $customTime"
+                }
+                default {
+                    $trigger = New-ScheduledTaskTrigger -Daily -At "9:00AM"
+                    $freqDesc = "daily at 9 AM"
+                }
+            }
+        }
+        default {
+            $trigger = New-ScheduledTaskTrigger -Daily -At "9:00AM"
+            $freqDesc = "daily at 9 AM"
+        }
+    }
+    
+    try {
+        Register-ScheduledTask -TaskName "CypherPulse" -Action $action -Trigger $trigger -Force | Out-Null
+        Write-Host ""
+        Write-Host "✓ Scheduled task added. CypherPulse will collect data automatically ($freqDesc)." -ForegroundColor Green
+    } catch {
+        Write-Host ""
+        Write-Host "⚠ Failed to create scheduled task. You may need to run PowerShell as Administrator." -ForegroundColor Yellow
+        Write-Host "You can set this up later — see README for instructions." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host ""
+    Write-Host "You can set this up later — see README for instructions." -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host "✓ Installation complete!" -ForegroundColor Green
 Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
