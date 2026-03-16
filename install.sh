@@ -93,15 +93,15 @@ fi
 msg ""
 if [ -d "$INSTALL_DIR/.git" ]; then
     msg "Updating existing install at $INSTALL_DIR ..."
-    git -C "$INSTALL_DIR" pull --ff-only
+    git -C "$INSTALL_DIR" pull --ff-only || die "Failed to update repository"
 else
     msg "Cloning to $INSTALL_DIR ..."
     # Clone into a temp dir then move, so it works whether $INSTALL_DIR exists or not
     TMP_CLONE="$(mktemp -d)"
     trap "rm -rf \"$TMP_CLONE\" 2>/dev/null" EXIT
-    git clone "$REPO_URL" "$TMP_CLONE/cypherpulse"
-    mkdir -p "$INSTALL_DIR"
-    cp -r "$TMP_CLONE/cypherpulse/." "$INSTALL_DIR/"
+    git clone "$REPO_URL" "$TMP_CLONE/cypherpulse" || die "Failed to clone repository"
+    mkdir -p "$INSTALL_DIR" || die "Failed to create install directory"
+    cp -r "$TMP_CLONE/cypherpulse/." "$INSTALL_DIR/" || die "Failed to copy files"
     rm -rf "$TMP_CLONE"
 fi
 ok "Repository ready"
@@ -109,10 +109,10 @@ ok "Repository ready"
 # ---------- virtualenv + deps ----------
 msg ""
 msg "Setting up Python environment..."
-python3 -m venv "$INSTALL_DIR/venv"
-"$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade pip
-"$INSTALL_DIR/venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
-"$INSTALL_DIR/venv/bin/pip" install --quiet -e "$INSTALL_DIR"
+python3 -m venv "$INSTALL_DIR/venv" || die "Failed to create virtual environment"
+"$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade pip || die "Failed to upgrade pip"
+"$INSTALL_DIR/venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt" || die "Failed to install requirements"
+"$INSTALL_DIR/venv/bin/pip" install --quiet -e "$INSTALL_DIR" || die "Failed to install CypherPulse"
 ok "Dependencies installed"
 
 # ---------- config: collect API key inline ----------
@@ -123,42 +123,66 @@ msg "=================================================="
 
 ENV_FILE="$INSTALL_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
-    cp "$INSTALL_DIR/config.example.env" "$ENV_FILE"
+    cp "$INSTALL_DIR/config.example.env" "$ENV_FILE" || die "Failed to create .env file"
 fi
 
-msg ""
-msg "Get your free API key at: https://twitterapi.io/?ref=quenosai"
+# Check if .env already has real values (idempotency check)
+EXISTING_API_KEY=$(grep "^TWITTER_API_KEY=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)
+EXISTING_USERNAME=$(grep "^TWITTER_USERNAME=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)
 
-# Validate API key
-while true; do
-    ask_silent "twitterapi.io API key:"
-    API_KEY="$REPLY"
-    if [ -z "$API_KEY" ]; then
-        warn "API key cannot be empty. Please try again."
-    elif [ "$API_KEY" = "your_api_key_here" ]; then
-        warn "Please enter your actual API key (not the placeholder)."
-    else
-        break
-    fi
-done
+HAS_CONFIG=false
+if [ -n "$EXISTING_API_KEY" ] && [ "$EXISTING_API_KEY" != "your_api_key_here" ] && \
+   [ -n "$EXISTING_USERNAME" ] && [ "$EXISTING_USERNAME" != "your_username_here" ]; then
+    HAS_CONFIG=true
+    msg ""
+    msg "Existing configuration found:"
+    msg "  API key: ${EXISTING_API_KEY:0:8}..."
+    msg "  Username: $EXISTING_USERNAME"
+    msg ""
+    ask "Keep existing config? [Y/n]:"
+    case "$REPLY" in
+        [Nn]*) HAS_CONFIG=false ;;
+    esac
+fi
 
-msg ""
+if [ "$HAS_CONFIG" = "false" ]; then
+    msg ""
+    msg "Get your free API key at: https://twitterapi.io/?ref=quenosai"
 
-# Validate username
-while true; do
-    ask "Your X/Twitter username (without @):"
-    TWITTER_USER="$REPLY"
-    # Remove @ if user included it
-    TWITTER_USER="${TWITTER_USER#@}"
-    
-    if [ -z "$TWITTER_USER" ]; then
-        warn "Username cannot be empty. Please try again."
-    elif ! echo "$TWITTER_USER" | grep -Eq '^[A-Za-z0-9_]+$'; then
-        warn "Username contains invalid characters. Use only letters, numbers, and underscores."
-    else
-        break
-    fi
-done
+    # Validate API key
+    while true; do
+        ask_silent "twitterapi.io API key:"
+        API_KEY="$REPLY"
+        if [ -z "$API_KEY" ]; then
+            warn "API key cannot be empty. Please try again."
+        elif [ "$API_KEY" = "your_api_key_here" ]; then
+            warn "Please enter your actual API key (not the placeholder)."
+        else
+            break
+        fi
+    done
+
+    msg ""
+
+    # Validate username
+    while true; do
+        ask "Your X/Twitter username (without @):"
+        TWITTER_USER="$REPLY"
+        # Remove @ if user included it
+        TWITTER_USER="${TWITTER_USER#@}"
+        
+        if [ -z "$TWITTER_USER" ]; then
+            warn "Username cannot be empty. Please try again."
+        elif ! echo "$TWITTER_USER" | grep -Eq '^[A-Za-z0-9_]+$'; then
+            warn "Username contains invalid characters. Use only letters, numbers, and underscores."
+        else
+            break
+        fi
+    done
+else
+    API_KEY="$EXISTING_API_KEY"
+    TWITTER_USER="$EXISTING_USERNAME"
+fi
 
 # Write to .env using sed (safe for curl|bash, portable with .bak)
 if grep -q "^TWITTER_API_KEY=" "$ENV_FILE" 2>/dev/null; then
@@ -233,7 +257,7 @@ if [ "$SCHED" = "yes" ]; then
     esac
 
     CRON_CMD="$INSTALL_DIR/venv/bin/cypherpulse scan && $INSTALL_DIR/venv/bin/cypherpulse collect >> $INSTALL_DIR/cypherpulse.log 2>&1"
-    ( crontab -l 2>/dev/null || true; echo "$CRON_EXPR $CRON_CMD" ) | crontab -
+    ( crontab -l 2>/dev/null || true; echo "$CRON_EXPR $CRON_CMD" ) | crontab - || die "Failed to install cron job"
     ok "Cron job added ($FREQ_DESC)"
 else
     msg "Skipped. To add later: crontab -e"
@@ -249,11 +273,11 @@ msg ""
 CP="$INSTALL_DIR/venv/bin/cypherpulse"
 
 msg "Scanning your recent tweets..."
-"$CP" scan && ok "Scan complete"
+"$CP" scan && ok "Scan complete" || die "Failed to scan tweets"
 
 msg ""
 msg "Collecting engagement metrics..."
-"$CP" collect && ok "Metrics collected"
+"$CP" collect && ok "Metrics collected" || warn "Metrics collection may need more time; run 'cypherpulse collect' later"
 
 # ---------- launch dashboard ----------
 msg ""
