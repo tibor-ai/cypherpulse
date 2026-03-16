@@ -272,7 +272,7 @@ echo "════════════════════════�
 echo ""
 echo "Next steps:"
 echo ""
-echo "1. Get your API key from https://twitterapi.io/"
+echo "1. Get your API key from https://twitterapi.io/?ref=quenosai"
 echo ""
 echo "2. Edit your configuration:"
 echo -e "   ${YELLOW}nano $INSTALL_DIR/.env${NC}"

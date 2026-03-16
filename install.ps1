@@ -316,7 +316,7 @@ Write-Host "══════════════════════�
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "1. Get your API key from https://twitterapi.io/" -ForegroundColor White
+Write-Host "1. Get your API key from https://twitterapi.io/?ref=quenosai" -ForegroundColor White
 Write-Host ""
 Write-Host "2. Edit your configuration:" -ForegroundColor White
 Write-Host "   notepad $InstallDir\.env" -ForegroundColor Yellow

@@ -169,7 +169,9 @@ TWITTER_USERNAME=your_twitter_username
 PORT=8080
 ```
 
-**API Key**: Get your free API key from [twitterapi.io](https://twitterapi.io/)
+**API Key**: Get your free API key from [twitterapi.io](https://twitterapi.io/?ref=quenosai)
+
+*(Using this link helps support the project — thank you! 🙏)*
 
 ### Usage
 
@@ -241,7 +243,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## 🙏 Acknowledgments
 
-Built with love for the Twitter developer community. Data provided by [twitterapi.io](https://twitterapi.io/).
+Built with love for the Twitter developer community. Data provided by [twitterapi.io](https://twitterapi.io/?ref=quenosai).
 
 ---
 
