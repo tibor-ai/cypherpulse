@@ -2,21 +2,22 @@
 
 import os
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from .db import get_db
 
 SNAPSHOT_HOURS = [24, 72, 168]  # 1 day, 3 days, 1 week
 
 
-def fetch_recent_tweets(username: str, api_key: str, count: int = 100):
-    """Fetch recent tweets for a given username using twitterapi.io."""
+def fetch_recent_tweets(username: str, api_key: str, count: int = 200, days: int = 7):
+    """Fetch tweets from the last N days for a given username using twitterapi.io."""
+    since_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     try:
         resp = requests.get(
             "https://api.twitterapi.io/twitter/tweet/advanced_search",
             headers={"X-API-Key": api_key},
             params={
-                "query": f"from:{username}",
+                "query": f"from:{username} since:{since_date}",
                 "queryType": "Latest",
                 "count": count
             },
