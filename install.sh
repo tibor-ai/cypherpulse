@@ -118,36 +118,19 @@ msg "=================================================="
 msg "  Setup"
 msg "=================================================="
 
-# Check if .env already has values set
 ENV_FILE="$INSTALL_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
     cp "$INSTALL_DIR/config.example.env" "$ENV_FILE"
 fi
 
-# Read existing values if present
-EXISTING_KEY=$(grep -E "^TWITTER_API_KEY=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
-EXISTING_USER=$(grep -E "^TWITTER_USERNAME=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
+msg ""
+msg "Get your free API key at: https://twitterapi.io/?ref=quenosai"
+ask_silent "twitterapi.io API key:"
+API_KEY="$REPLY"
 
-# Prompt for API key
-if [ -n "$EXISTING_KEY" ] && [ "$EXISTING_KEY" != "your_api_key_here" ]; then
-    ok "API key already set"
-    API_KEY="$EXISTING_KEY"
-else
-    msg ""
-    msg "Get your free API key at: https://twitterapi.io/?ref=quenosai"
-    ask_silent "twitterapi.io API key:"
-    API_KEY="$REPLY"
-fi
-
-# Prompt for username
-if [ -n "$EXISTING_USER" ] && [ "$EXISTING_USER" != "your_username" ]; then
-    ok "Username already set: $EXISTING_USER"
-    TWITTER_USER="$EXISTING_USER"
-else
-    msg ""
-    ask "Your X/Twitter username (without @):"
-    TWITTER_USER="$REPLY"
-fi
+msg ""
+ask "Your X/Twitter username (without @):"
+TWITTER_USER="$REPLY"
 
 # Write to .env using sed (no heredoc, safe for curl|bash)
 if grep -q "^TWITTER_API_KEY=" "$ENV_FILE"; then
