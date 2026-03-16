@@ -110,6 +110,7 @@ msg "Setting up Python environment..."
 python3 -m venv "$INSTALL_DIR/venv"
 "$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade pip
 "$INSTALL_DIR/venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
+"$INSTALL_DIR/venv/bin/pip" install --quiet -e "$INSTALL_DIR"
 ok "Dependencies installed"
 
 # ---------- config: collect API key inline ----------
