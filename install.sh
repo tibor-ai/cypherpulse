@@ -19,6 +19,14 @@ ask() {
     read -r REPLY </dev/tty
 }
 
+ask_silent() {
+    printf '%s ' "$1"
+    stty -echo 2>/dev/null
+    read -r REPLY </dev/tty
+    stty echo 2>/dev/null
+    printf '\n'
+}
+
 msg ""
 msg "=================================================="
 msg "  CypherPulse Installer"
@@ -91,22 +99,68 @@ python3 -m venv "$INSTALL_DIR/venv"
 "$INSTALL_DIR/venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
 ok "Dependencies installed"
 
-# ---------- config ----------
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    cp "$INSTALL_DIR/config.example.env" "$INSTALL_DIR/.env"
-    ok "Config created: $INSTALL_DIR/.env"
-    msg ""
-    msg "  Edit $INSTALL_DIR/.env and set:"
-    msg "    TWITTER_API_KEY    -> get one at https://twitterapi.io/?ref=quenosai"
-    msg "    TWITTER_USERNAME   -> your handle (without @)"
-    msg ""
-else
-    ok ".env already exists"
+# ---------- config: collect API key inline ----------
+msg ""
+msg "=================================================="
+msg "  Setup"
+msg "=================================================="
+
+# Check if .env already has values set
+ENV_FILE="$INSTALL_DIR/.env"
+if [ ! -f "$ENV_FILE" ]; then
+    cp "$INSTALL_DIR/config.example.env" "$ENV_FILE"
 fi
+
+# Read existing values if present
+EXISTING_KEY=$(grep -E "^TWITTER_API_KEY=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
+EXISTING_USER=$(grep -E "^TWITTER_USERNAME=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
+
+# Prompt for API key
+if [ -n "$EXISTING_KEY" ] && [ "$EXISTING_KEY" != "your_api_key_here" ]; then
+    ok "API key already set"
+    API_KEY="$EXISTING_KEY"
+else
+    msg ""
+    msg "Get your free API key at: https://twitterapi.io/?ref=quenosai"
+    ask_silent "twitterapi.io API key:"
+    API_KEY="$REPLY"
+fi
+
+# Prompt for username
+if [ -n "$EXISTING_USER" ] && [ "$EXISTING_USER" != "your_twitter_username" ]; then
+    ok "Username already set: $EXISTING_USER"
+    TWITTER_USER="$EXISTING_USER"
+else
+    msg ""
+    ask "Your X/Twitter username (without @):"
+    TWITTER_USER="$REPLY"
+fi
+
+# Write to .env
+python3 - <<PYEOF
+import re
+
+with open('$ENV_FILE', 'r') as f:
+    content = f.read()
+
+content = re.sub(r'^TWITTER_API_KEY=.*', 'TWITTER_API_KEY=$API_KEY', content, flags=re.MULTILINE)
+content = re.sub(r'^TWITTER_USERNAME=.*', 'TWITTER_USERNAME=$TWITTER_USER', content, flags=re.MULTILINE)
+
+# Add keys if not present
+if 'TWITTER_API_KEY=' not in content:
+    content += '\nTWITTER_API_KEY=$API_KEY\n'
+if 'TWITTER_USERNAME=' not in content:
+    content += '\nTWITTER_USERNAME=$TWITTER_USER\n'
+
+with open('$ENV_FILE', 'w') as f:
+    f.write(content)
+PYEOF
+
+ok "Config saved"
 
 # ---------- optional PATH symlink ----------
 msg ""
-ask "Add 'cypherpulse' to /usr/local/bin? [y/N]:"
+ask "Add 'cypherpulse' command to /usr/local/bin? [y/N]:"
 case "$REPLY" in
     [Yy]*)
         if [ -w "/usr/local/bin" ]; then
@@ -115,7 +169,7 @@ case "$REPLY" in
         else
             sudo ln -sf "$INSTALL_DIR/venv/bin/cypherpulse" /usr/local/bin/cypherpulse \
                 && ok "cypherpulse added to /usr/local/bin" \
-                || warn "Could not add to PATH. Run: $INSTALL_DIR/venv/bin/cypherpulse"
+                || warn "Could not add to PATH. Run directly: $INSTALL_DIR/venv/bin/cypherpulse"
         fi
         ;;
 esac
@@ -125,7 +179,7 @@ msg ""
 msg "--------------------------------------------------"
 msg "  Automated data collection"
 msg "--------------------------------------------------"
-ask "Schedule CypherPulse to run automatically? [Y/n]:"
+ask "Schedule automatic data collection? [Y/n]:"
 case "$REPLY" in
     [Nn]*) SCHED=no ;;
     *)     SCHED=yes ;;
@@ -146,7 +200,7 @@ if [ "$SCHED" = "yes" ]; then
         1) CRON_EXPR="0 * * * *";   FREQ_DESC="hourly" ;;
         2) CRON_EXPR="0 */6 * * *"; FREQ_DESC="every 6 hours" ;;
         4)
-            ask "Enter cron expression:"
+            ask "Enter cron expression (e.g. 0 9 * * *):"
             CRON_EXPR="$REPLY"
             FREQ_DESC="custom"
             ;;
@@ -157,21 +211,48 @@ if [ "$SCHED" = "yes" ]; then
     ( crontab -l 2>/dev/null; echo "$CRON_EXPR $CRON_CMD" ) | crontab -
     ok "Cron job added ($FREQ_DESC)"
 else
-    msg "Skipped. To set up later: crontab -e"
+    msg "Skipped. To add later: crontab -e"
 fi
+
+# ---------- initial data collection ----------
+msg ""
+msg "=================================================="
+msg "  Fetching your initial data..."
+msg "=================================================="
+msg ""
+
+cd "$INSTALL_DIR"
+source venv/bin/activate
+
+msg "Scanning your recent tweets..."
+cypherpulse scan && ok "Scan complete"
+
+msg ""
+msg "Collecting engagement metrics..."
+cypherpulse collect && ok "Metrics collected"
+
+# ---------- launch dashboard ----------
+msg ""
+ask "Open the dashboard now in your browser? [Y/n]:"
+case "$REPLY" in
+    [Nn]*) ;;
+    *)
+        msg "Starting dashboard at http://localhost:8080 ..."
+        msg "(Press Ctrl+C to stop)"
+        msg ""
+        cypherpulse serve
+        ;;
+esac
 
 # ---------- done ----------
 msg ""
 msg "=================================================="
-msg "  Done!"
+msg "  CypherPulse is ready!"
 msg "=================================================="
 msg ""
-msg "Next steps:"
-msg "  1. Edit $INSTALL_DIR/.env  (add API key + username)"
-msg "  2. cd $INSTALL_DIR && source venv/bin/activate"
-msg "  3. cypherpulse scan      # fetch recent tweets"
-msg "  4. cypherpulse collect   # snapshot metrics"
-msg "  5. cypherpulse serve     # open dashboard"
-msg ""
-msg "API key: https://twitterapi.io/?ref=quenosai"
+msg "To run manually:"
+msg "  cd $INSTALL_DIR && source venv/bin/activate"
+msg "  cypherpulse scan      # fetch new tweets"
+msg "  cypherpulse collect   # snapshot metrics"
+msg "  cypherpulse serve     # open dashboard"
 msg ""
