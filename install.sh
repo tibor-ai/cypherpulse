@@ -21,9 +21,9 @@ ask() {
 
 ask_silent() {
     printf '%s ' "$1"
-    stty -echo 2>/dev/null
+    stty -echo 2>/dev/null || true
     read -r REPLY </dev/tty
-    stty echo 2>/dev/null
+    stty echo 2>/dev/null || true
     printf '\n'
 }
 
