@@ -5,7 +5,7 @@
 set -e
 
 REPO_URL="https://github.com/tibor-ai/cypherpulse.git"
-DEFAULT_DIR="$(pwd)/cypherpulse"
+DEFAULT_DIR="$(pwd)"
 
 # ---------- helpers ----------
 msg()  { printf '%s\n' "$1"; }
