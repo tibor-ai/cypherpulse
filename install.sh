@@ -210,15 +210,14 @@ msg "  Fetching your initial data..."
 msg "=================================================="
 msg ""
 
-cd "$INSTALL_DIR"
-source venv/bin/activate
+CP="$INSTALL_DIR/venv/bin/cypherpulse"
 
 msg "Scanning your recent tweets..."
-cypherpulse scan && ok "Scan complete"
+"$CP" scan && ok "Scan complete"
 
 msg ""
 msg "Collecting engagement metrics..."
-cypherpulse collect && ok "Metrics collected"
+"$CP" collect && ok "Metrics collected"
 
 # ---------- launch dashboard ----------
 msg ""
@@ -229,7 +228,7 @@ case "$REPLY" in
         msg "Starting dashboard at http://localhost:8080 ..."
         msg "(Press Ctrl+C to stop)"
         msg ""
-        cypherpulse serve
+        "$CP" serve
         ;;
 esac
 
