@@ -1,0 +1,191 @@
+"""Tweet scanning and metrics collection for CypherPulse."""
+
+import os
+import requests
+from datetime import datetime, timezone
+from typing import Optional
+from .db import get_db
+
+SNAPSHOT_HOURS = [24, 72, 168]  # 1 day, 3 days, 1 week
+
+
+def fetch_recent_tweets(username: str, api_key: str, count: int = 100):
+    """Fetch recent tweets for a given username using twitterapi.io."""
+    try:
+        resp = requests.get(
+            "https://api.twitterapi.io/twitter/tweet/advanced_search",
+            headers={"X-API-Key": api_key},
+            params={
+                "query": f"from:{username}",
+                "queryType": "Latest",
+                "count": count
+            },
+            timeout=20
+        )
+        resp.raise_for_status()
+        return resp.json().get("tweets", [])
+    except Exception as e:
+        print(f"Error fetching tweets: {e}")
+        return []
+
+
+def fetch_tweet_metrics(tweet_id: str, api_key: str):
+    """Fetch metrics for a specific tweet."""
+    try:
+        resp = requests.get(
+            "https://api.twitterapi.io/twitter/tweets",
+            headers={"X-API-Key": api_key},
+            params={"tweet_ids": tweet_id},
+            timeout=15
+        )
+        resp.raise_for_status()
+        tweets = resp.json().get("tweets", [])
+        
+        if tweets:
+            t = tweets[0]
+            return {
+                "likes": t.get("likeCount", 0) or 0,
+                "replies": t.get("replyCount", 0) or 0,
+                "retweets": t.get("retweetCount", 0) or 0,
+                "quotes": t.get("quoteCount", 0) or 0,
+                "impressions": t.get("viewCount", 0) or 0,
+            }
+    except Exception as e:
+        print(f"Error fetching metrics for {tweet_id}: {e}")
+    
+    return None
+
+
+def detect_post_type(tweet_data: dict) -> str:
+    """Detect post type from tweet data."""
+    is_reply = tweet_data.get("isReply", False) or bool(tweet_data.get("inReplyToId"))
+    is_retweet = bool(tweet_data.get("retweeted_tweet"))
+    
+    if is_reply:
+        return "reply"
+    elif is_retweet:
+        return "retweet"
+    else:
+        return "tweet"
+
+
+def parse_twitter_date(date_str: str) -> str:
+    """Parse Twitter date format to ISO format."""
+    try:
+        dt = datetime.strptime(date_str, '%a %b %d %H:%M:%S +0000 %Y')
+        return dt.replace(tzinfo=timezone.utc).isoformat()
+    except:
+        return datetime.now(timezone.utc).isoformat()
+
+
+def scan_tweets(username: str, api_key: str, db_path: Optional[str] = None):
+    """Scan and register new tweets from the specified username."""
+    print(f"Scanning tweets from @{username}...")
+    
+    tweets = fetch_recent_tweets(username, api_key)
+    print(f"Found {len(tweets)} recent tweets")
+    
+    if not tweets:
+        return 0
+    
+    conn = get_db(db_path)
+    
+    # Get existing tweet IDs
+    existing = {
+        r[0] for r in conn.execute("SELECT tweet_id FROM tweet_performance").fetchall()
+    }
+    
+    new_count = 0
+    
+    for tweet in tweets:
+        tweet_id = str(tweet.get("id", ""))
+        
+        if not tweet_id or tweet_id in existing:
+            continue
+        
+        post_type = detect_post_type(tweet)
+        text = tweet.get("text", "")[:280]
+        created_at = parse_twitter_date(tweet.get("createdAt", ""))
+        
+        conn.execute("""
+            INSERT OR IGNORE INTO tweet_performance 
+            (tweet_id, post_type, posted_at, tweet_text)
+            VALUES (?, ?, ?, ?)
+        """, (tweet_id, post_type, created_at, text))
+        
+        new_count += 1
+        print(f"  + [{post_type}] {tweet_id} — {text[:60]}")
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"Registered {new_count} new tweets")
+    return new_count
+
+
+def collect_snapshots(api_key: str, db_path: Optional[str] = None):
+    """Collect metrics snapshots for tweets at their due measurement points."""
+    print("Collecting metric snapshots...")
+    
+    conn = get_db(db_path)
+    now = datetime.now(timezone.utc)
+    
+    # Get recent tweets
+    rows = conn.execute("""
+        SELECT tweet_id, post_type, posted_at 
+        FROM tweet_performance
+        ORDER BY posted_at DESC LIMIT 500
+    """).fetchall()
+    
+    updated = 0
+    
+    for row in rows:
+        try:
+            posted = datetime.fromisoformat(row["posted_at"])
+        except:
+            continue
+        
+        age_hours = (now - posted).total_seconds() / 3600
+        
+        for snap_hours in SNAPSHOT_HOURS:
+            # Skip if not due yet
+            if age_hours < snap_hours:
+                continue
+            
+            # Check if snapshot already exists
+            exists = conn.execute("""
+                SELECT 1 FROM tweet_snapshots 
+                WHERE tweet_id = ? AND snapshot_hours = ?
+            """, (row["tweet_id"], snap_hours)).fetchone()
+            
+            if exists:
+                continue
+            
+            # Fetch and store metrics
+            metrics = fetch_tweet_metrics(row["tweet_id"], api_key)
+            
+            if not metrics:
+                continue
+            
+            conn.execute("""
+                INSERT OR IGNORE INTO tweet_snapshots
+                (tweet_id, snapshot_hours, snapshot_at, likes, replies, 
+                 retweets, quotes, impressions)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                row["tweet_id"], snap_hours, now.isoformat(),
+                metrics["likes"], metrics["replies"], metrics["retweets"],
+                metrics["quotes"], metrics["impressions"]
+            ))
+            
+            updated += 1
+            snap_label = {24: "24h", 72: "72h", 168: "7d"}.get(snap_hours, f"{snap_hours}h")
+            print(f"  [{snap_label}] {row['post_type']:<8} {row['tweet_id'][:16]} "
+                  f"❤️{metrics['likes']} 💬{metrics['replies']} "
+                  f"🔁{metrics['retweets']} 👁️{metrics['impressions']}")
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"Collected {updated} snapshots")
+    return updated

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CypherPulse - X/Twitter Analytics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .section {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        h2 {
+            color: #f1f5f9;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+        }
+
+        th {
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+        }
+
+        td {
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        tr:hover td {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .chart-container {
+            margin: 2rem 0;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bar-label {
+            min-width: 80px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 24px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 0.5rem;
+        }
+
+        .bar-value {
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .top-posts {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .post-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .post-card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .post-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .post-metrics {
+            display: flex;
+            gap: 1rem;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .post-text {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(59, 130, 246, 0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CypherPulse</h1>
+            <p class="subtitle">X/Twitter Analytics Dashboard</p>
+        </header>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem;">Loading analytics...</p>
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- Summary Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Tweets</div>
+                    <div class="stat-value" id="totalTweets">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Snapshots Collected</div>
+                    <div class="stat-value" id="totalSnapshots">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Impressions (24h)</div>
+                    <div class="stat-value" id="avgImpressions">-</div>
+                </div>
+            </div>
+
+            <!-- Performance by Type -->
+            <div class="section">
+                <h2>📊 Performance by Post Type (24h)</h2>
+                <table id="performanceTable">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Posts</th>
+                            <th>Avg Likes</th>
+                            <th>Avg Replies</th>
+                            <th>Avg Retweets</th>
+                            <th>Avg Impressions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Hourly Performance -->
+            <div class="section">
+                <h2>🕐 Impressions by Hour (UTC)</h2>
+                <div id="hourlyChart" class="chart-container"></div>
+            </div>
+
+            <!-- Daily Performance -->
+            <div class="section">
+                <h2>📅 Impressions by Day of Week</h2>
+                <div id="dailyChart" class="chart-container"></div>
+            </div>
+
+            <!-- Top Posts -->
+            <div class="section">
+                <h2>🏆 Top 10 Posts by Impressions</h2>
+                <div id="topPosts" class="top-posts"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>CypherPulse v0.1.0 • Open Source Twitter Analytics</p>
+        </footer>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const [stats, performance, hourly, daily, topPosts] = await Promise.all([
+                    fetch('/api/stats').then(r => r.json()),
+                    fetch('/api/performance/24').then(r => r.json()),
+                    fetch('/api/hourly-performance').then(r => r.json()),
+                    fetch('/api/daily-performance').then(r => r.json()),
+                    fetch('/api/top-posts?limit=10').then(r => r.json())
+                ]);
+
+                return { stats, performance, hourly, daily, topPosts };
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                return null;
+            }
+        }
+
+        function renderStats(stats) {
+            document.getElementById('totalTweets').textContent = stats.total_tweets.toLocaleString();
+            document.getElementById('totalSnapshots').textContent = stats.total_snapshots.toLocaleString();
+            document.getElementById('avgImpressions').textContent = Math.round(stats.avg_impressions_24h).toLocaleString();
+        }
+
+        function renderPerformanceTable(data) {
+            const tbody = document.querySelector('#performanceTable tbody');
+            tbody.innerHTML = '';
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${row.post_type}</strong></td>
+                    <td>${row.posts}</td>
+                    <td>${row.avg_likes}</td>
+                    <td>${row.avg_replies}</td>
+                    <td>${row.avg_retweets}</td>
+                    <td>${Math.round(row.avg_impressions).toLocaleString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderBarChart(containerId, data, labelKey, valueKey) {
+            const container = document.getElementById(containerId);
+            const maxValue = Math.max(...data.map(d => d[valueKey] || 0));
+
+            const chart = document.createElement('div');
+            chart.className = 'bar-chart';
+
+            data.forEach(item => {
+                const value = item[valueKey] || 0;
+                const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+
+                const row = document.createElement('div');
+                row.className = 'bar-row';
+                row.innerHTML = `
+                    <div class="bar-label">${item[labelKey]}</div>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width: ${percentage}%">
+                            <span class="bar-value">${Math.round(value).toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+                chart.appendChild(row);
+            });
+
+            container.appendChild(chart);
+        }
+
+        function renderTopPosts(posts) {
+            const container = document.getElementById('topPosts');
+            container.innerHTML = '';
+
+            posts.forEach((post, index) => {
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                card.innerHTML = `
+                    <div class="post-header">
+                        <span class="post-type">${post.post_type}</span>
+                        <div class="post-metrics">
+                            <span>👁️ ${post.impressions.toLocaleString()}</span>
+                            <span>❤️ ${post.likes}</span>
+                            <span>🔁 ${post.retweets}</span>
+                        </div>
+                    </div>
+                    <div class="post-text">${post.tweet_text || 'No text available'}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function init() {
+            const data = await fetchData();
+
+            if (!data) {
+                document.getElementById('loading').innerHTML = '<p style="color: #ef4444;">Failed to load data. Make sure the API is running.</p>';
+                return;
+            }
+
+            renderStats(data.stats);
+            renderPerformanceTable(data.performance);
+
+            // Render hourly chart
+            if (data.hourly.length > 0) {
+                renderBarChart('hourlyChart', data.hourly, 'hour_utc', 'avg_impressions');
+            }
+
+            // Render daily chart
+            if (data.daily.length > 0) {
+                renderBarChart('dailyChart', data.daily, 'day_name', 'avg_impressions');
+            }
+
+            renderTopPosts(data.topPosts);
+
+            // Show dashboard, hide loading
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+        }
+
+        // Initialize on load
+        init();
+
+        // Auto-refresh every 5 minutes
+        setInterval(init, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
