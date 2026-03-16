@@ -9,25 +9,61 @@ from .db import get_db
 SNAPSHOT_HOURS = [24, 72, 168]  # 1 day, 3 days, 1 week
 
 
-def fetch_recent_tweets(username: str, api_key: str, count: int = 200, days: int = 7):
-    """Fetch tweets from the last N days for a given username using twitterapi.io."""
+def fetch_recent_tweets(username: str, api_key: str, days: int = 7, max_pages: int = 20):
+    """Fetch tweets from the last N days using cursor pagination (20 per page)."""
     since_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
-    try:
-        resp = requests.get(
-            "https://api.twitterapi.io/twitter/tweet/advanced_search",
-            headers={"X-API-Key": api_key},
-            params={
-                "query": f"from:{username} since:{since_date}",
-                "queryType": "Latest",
-                "count": count
-            },
-            timeout=20
-        )
-        resp.raise_for_status()
-        return resp.json().get("tweets", [])
-    except Exception as e:
-        print(f"Error fetching tweets: {e}")
-        return []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    all_tweets = []
+    seen_ids = set()
+    cursor = None
+
+    for page in range(max_pages):
+        params = {
+            "query": f"from:{username} since:{since_date}",
+            "queryType": "Latest",
+        }
+        if cursor:
+            params["cursor"] = cursor
+
+        try:
+            resp = requests.get(
+                "https://api.twitterapi.io/twitter/tweet/advanced_search",
+                headers={"X-API-Key": api_key},
+                params=params,
+                timeout=20
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            print(f"Error fetching tweets (page {page + 1}): {e}")
+            break
+
+        tweets = data.get("tweets", [])
+        if not tweets:
+            break
+
+        for t in tweets:
+            tid = str(t.get("id", ""))
+            if tid and tid not in seen_ids:
+                seen_ids.add(tid)
+                all_tweets.append(t)
+
+        cursor = data.get("next_cursor") or data.get("cursor")
+        if not cursor:
+            break
+
+        # Stop if oldest tweet on this page is beyond our window
+        oldest = tweets[-1].get("createdAt", "")
+        if oldest:
+            try:
+                oldest_dt = datetime.strptime(oldest, '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo=timezone.utc)
+                if oldest_dt < cutoff:
+                    break
+            except Exception:
+                pass
+
+    return all_tweets
 
 
 def fetch_tweet_metrics(tweet_id: str, api_key: str):
