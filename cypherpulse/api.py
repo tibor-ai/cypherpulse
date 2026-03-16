@@ -1,8 +1,10 @@
 """FastAPI backend for CypherPulse dashboard."""
 
 import logging
-from pathlib import Path
 import os
+import sqlite3
+from pathlib import Path
+from typing import Dict, List, Any, Union
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,16 +41,17 @@ WEB_DIR = Path(__file__).parent.parent / "web"
 
 
 @app.get("/")
-async def root():
+async def root() -> Union[FileResponse, Dict[str, str]]:
     """Serve the dashboard."""
     index_file = WEB_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
+    logger.warning(f"Dashboard index.html not found at {index_file}, falling back to API response")
     return {"message": "CypherPulse API", "version": "0.1.0"}
 
 
 @app.get("/api/stats")
-async def api_stats():
+async def api_stats() -> JSONResponse:
     """Get summary statistics."""
     try:
         return JSONResponse(get_stats())
@@ -58,7 +61,7 @@ async def api_stats():
 
 
 @app.get("/api/performance/{snapshot_hours}")
-async def api_performance(snapshot_hours: int):
+async def api_performance(snapshot_hours: int) -> JSONResponse:
     """Get performance metrics by post type for a specific snapshot interval."""
     if snapshot_hours not in [24, 72, 168]:
         raise HTTPException(status_code=400, detail="snapshot_hours must be 24, 72, or 168")
@@ -71,7 +74,7 @@ async def api_performance(snapshot_hours: int):
 
 
 @app.get("/api/top-posts")
-async def api_top_posts(limit: int = Query(default=10, ge=1, le=100)):
+async def api_top_posts(limit: int = Query(default=10, ge=1, le=100)) -> JSONResponse:
     """Get top posts by impressions."""
     try:
         data = get_top_posts(limit)
@@ -82,7 +85,7 @@ async def api_top_posts(limit: int = Query(default=10, ge=1, le=100)):
 
 
 @app.get("/api/hourly-performance")
-async def api_hourly():
+async def api_hourly() -> JSONResponse:
     """Get performance by hour of day."""
     try:
         data = get_hourly_performance()
@@ -93,7 +96,7 @@ async def api_hourly():
 
 
 @app.get("/api/daily-performance")
-async def api_daily():
+async def api_daily() -> JSONResponse:
     """Get performance by day of week."""
     try:
         data = get_daily_performance()
@@ -107,7 +110,7 @@ async def api_daily():
 async def api_trends(
     snapshot_hours: int,
     days: int = Query(default=30, ge=1, le=365)
-):
+) -> JSONResponse:
     """Get engagement trends over time by post type."""
     if snapshot_hours not in [24, 72, 168]:
         raise HTTPException(status_code=400, detail="snapshot_hours must be 24, 72, or 168")

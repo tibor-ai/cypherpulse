@@ -11,6 +11,35 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Database schema definition
+DB_SCHEMA = """
+    CREATE TABLE IF NOT EXISTS tweet_performance (
+        tweet_id         TEXT PRIMARY KEY,
+        post_type        TEXT NOT NULL,
+        posted_at        TEXT NOT NULL,
+        tweet_text       TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS tweet_snapshots (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        tweet_id         TEXT NOT NULL,
+        snapshot_hours   INTEGER NOT NULL,
+        snapshot_at      TEXT NOT NULL,
+        likes            INTEGER DEFAULT 0,
+        replies          INTEGER DEFAULT 0,
+        retweets         INTEGER DEFAULT 0,
+        quotes           INTEGER DEFAULT 0,
+        impressions      INTEGER DEFAULT 0,
+        UNIQUE(tweet_id, snapshot_hours)
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_snapshots_tweet 
+    ON tweet_snapshots(tweet_id);
+    
+    CREATE INDEX IF NOT EXISTS idx_snapshots_hours 
+    ON tweet_snapshots(snapshot_hours);
+"""
+
 
 def _validate_db_path(path_str: str) -> Path:
     """Validate database path against path traversal attacks.
@@ -89,34 +118,8 @@ def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     
-    # Initialize schema
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS tweet_performance (
-            tweet_id         TEXT PRIMARY KEY,
-            post_type        TEXT NOT NULL,
-            posted_at        TEXT NOT NULL,
-            tweet_text       TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS tweet_snapshots (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            tweet_id         TEXT NOT NULL,
-            snapshot_hours   INTEGER NOT NULL,
-            snapshot_at      TEXT NOT NULL,
-            likes            INTEGER DEFAULT 0,
-            replies          INTEGER DEFAULT 0,
-            retweets         INTEGER DEFAULT 0,
-            quotes           INTEGER DEFAULT 0,
-            impressions      INTEGER DEFAULT 0,
-            UNIQUE(tweet_id, snapshot_hours)
-        );
-        
-        CREATE INDEX IF NOT EXISTS idx_snapshots_tweet 
-        ON tweet_snapshots(tweet_id);
-        
-        CREATE INDEX IF NOT EXISTS idx_snapshots_hours 
-        ON tweet_snapshots(snapshot_hours);
-    """)
+    # Initialize schema from module constant
+    conn.executescript(DB_SCHEMA)
     conn.commit()
     return conn
 

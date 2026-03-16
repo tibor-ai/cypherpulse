@@ -246,7 +246,7 @@
         <header>
             <h1>⚡ CypherPulse</h1>
             <p class="subtitle">X/Twitter Analytics Dashboard - Quick Install</p>
-            <a href="https://github.com/tibor-ai/cypherpulse" class="github-link" target="_blank">
+            <a href="https://github.com/tibor-ai/cypherpulse" class="github-link" target="_blank" rel="noopener noreferrer">
                 📦 View on GitHub
             </a>
         </header>
@@ -261,7 +261,7 @@
             <div id="installCommand"></div>
             
             <div class="expandable">
-                <div class="expand-header" onclick="toggleExpand('pythonHelp')">
+                <div class="expand-header" data-toggle="pythonHelp">
                     <span>❓ Don't have Python installed?</span>
                     <span class="expand-icon" id="pythonHelp-icon">▼</span>
                 </div>
@@ -282,7 +282,7 @@
                 
                 <div class="step">
                     <h3><span class="step-number">2</span>Configure API</h3>
-                    <p>Get your free API key from <a href="https://twitterapi.io/?ref=quenosai" target="_blank">twitterapi.io</a> and add it to your <code>.env</code> file along with your Twitter username.</p>
+                    <p>Get your free API key from <a href="https://twitterapi.io/?ref=quenosai" target="_blank" rel="noopener noreferrer">twitterapi.io</a> and add it to your <code>.env</code> file along with your Twitter username.</p>
                 </div>
                 
                 <div class="step">
@@ -294,7 +294,7 @@
         
         <footer>
             <p>Built with ⚡ by the open-source community</p>
-            <p><a href="https://github.com/tibor-ai/cypherpulse" target="_blank">github.com/tibor-ai/cypherpulse</a></p>
+            <p><a href="https://github.com/tibor-ai/cypherpulse" target="_blank" rel="noopener noreferrer">github.com/tibor-ai/cypherpulse</a></p>
         </footer>
     </div>
     
@@ -343,16 +343,35 @@
             const osInfo = commands[os];
             document.getElementById('detectedOS').textContent = osInfo.name;
             
-            document.getElementById('installCommand').innerHTML = `
-                <p style="margin-bottom: 10px; color: #8892b0;">${osInfo.note}:</p>
-                <div class="command-box">
-                    <code id="command-text">${osInfo.command}</code>
-                    <button class="copy-btn" onclick="copyCommand()">Copy</button>
-                </div>
-            `;
+            const container = document.getElementById('installCommand');
+            container.innerHTML = '';
+            
+            const note = document.createElement('p');
+            note.style.marginBottom = '10px';
+            note.style.color = '#8892b0';
+            note.textContent = osInfo.note + ':';
+            
+            const commandBox = document.createElement('div');
+            commandBox.className = 'command-box';
+            
+            const code = document.createElement('code');
+            code.id = 'command-text';
+            code.textContent = osInfo.command;
+            
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.textContent = 'Copy';
+            copyBtn.setAttribute('aria-label', 'Copy installation command to clipboard');
+            copyBtn.addEventListener('click', copyCommand);
+            
+            commandBox.appendChild(code);
+            commandBox.appendChild(copyBtn);
+            container.appendChild(note);
+            container.appendChild(commandBox);
         }
         
         // Display Python install instructions based on OS
+        // NOTE: Content is hardcoded - no user input, innerHTML is safe here
         function displayPythonInstructions(os) {
             const instructions = {
                 windows: `
@@ -413,18 +432,53 @@
             document.getElementById('pythonInstallInstructions').innerHTML = instructions[os];
         }
         
-        // Copy command to clipboard
+        // Copy command to clipboard with fallback for older browsers
         function copyCommand() {
             const commandText = document.getElementById('command-text').textContent;
-            navigator.clipboard.writeText(commandText).then(() => {
-                const btn = document.querySelector('.copy-btn');
+            const btn = document.querySelector('.copy-btn');
+            
+            // Try modern Clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(commandText).then(() => {
+                    btn.textContent = 'Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Clipboard API failed:', err);
+                    fallbackCopy(commandText, btn);
+                });
+            } else {
+                // Fallback for older browsers
+                fallbackCopy(commandText, btn);
+            }
+        }
+        
+        function fallbackCopy(text, btn) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
                 btn.textContent = 'Copied!';
                 btn.classList.add('copied');
                 setTimeout(() => {
                     btn.textContent = 'Copy';
                     btn.classList.remove('copied');
                 }, 2000);
-            });
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                btn.textContent = 'Failed';
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                }, 2000);
+            }
+            document.body.removeChild(textarea);
         }
         
         // Toggle expandable sections
@@ -441,6 +495,14 @@
             const os = detectOS();
             displayInstallCommand(os);
             displayPythonInstructions(os);
+            
+            // Setup event listeners for expandable sections
+            document.querySelectorAll('[data-toggle]').forEach(header => {
+                header.addEventListener('click', function() {
+                    const sectionId = this.getAttribute('data-toggle');
+                    toggleExpand(sectionId);
+                });
+            });
         };
     </script>
 </body>

@@ -12,7 +12,9 @@ from .db import get_db
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SNAPSHOT_HOURS = [24, 72, 168]  # 1 day, 3 days, 1 week
+# Measure engagement at 1 day, 3 days, and 7 days to track engagement decay patterns.
+# These intervals capture initial viral spread (24h), sustained interest (72h), and long-tail discovery (168h).
+SNAPSHOT_HOURS = [24, 72, 168]
 
 
 def _should_continue_pagination(cursor: Optional[str], tweets: List[Dict], 

@@ -3,12 +3,15 @@
 import os
 import sys
 from pathlib import Path
+from typing import Tuple
 from dotenv import load_dotenv
 from .collector import scan_tweets, collect_snapshots
 from .db import get_stats, get_performance_by_type, get_top_posts
 
+DEFAULT_PORT = 8080
 
-def load_config():
+
+def load_config() -> Tuple[str, str]:
     """Load configuration from .env file.
     
     Returns:
@@ -38,19 +41,19 @@ def load_config():
     return api_key, username
 
 
-def cmd_scan():
+def cmd_scan() -> None:
     """Scan for new tweets from configured username."""
     api_key, username = load_config()
     scan_tweets(username, api_key)
 
 
-def cmd_collect():
+def cmd_collect() -> None:
     """Collect metric snapshots for tracked tweets at their due measurement points."""
     api_key, _ = load_config()
     collect_snapshots(api_key)
 
 
-def cmd_report():
+def cmd_report() -> None:
     """Generate and print performance analytics report to console."""
     stats = get_stats()
     
@@ -90,14 +93,14 @@ def cmd_report():
         print(f"   {text}\n")
 
 
-def cmd_serve():
+def cmd_serve() -> None:
     """Start the web dashboard server.
     
     Binds to 127.0.0.1 by default for security (localhost only).
     Set HOST=0.0.0.0 to allow external connections.
     Set PORT to change the default port (8080).
     """
-    port = int(os.getenv("PORT", 8080))
+    port = int(os.getenv("PORT", DEFAULT_PORT))
     host = os.getenv("HOST", "127.0.0.1")
     
     try:
@@ -115,7 +118,7 @@ def cmd_serve():
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     """Main CLI entry point.
     
     Parses command-line arguments and dispatches to appropriate command handler.

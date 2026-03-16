@@ -2,7 +2,7 @@
 # CypherPulse installer - supports Ubuntu/Debian and macOS
 # Usage: curl -fsSL https://raw.githubusercontent.com/tibor-ai/cypherpulse/main/install.sh | bash
 
-set -e
+set -euo pipefail
 
 REPO_URL="https://github.com/tibor-ai/cypherpulse.git"
 DEFAULT_DIR="$(pwd)"

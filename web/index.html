@@ -247,6 +247,17 @@
             to { transform: rotate(360deg); }
         }
 
+        .hidden {
+            display: none;
+        }
+
+        .refresh-indicator {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-top: 2rem;
+        }
+
         footer {
             text-align: center;
             margin-top: 4rem;
@@ -302,12 +313,12 @@
             <p class="subtitle">X/Twitter Analytics Dashboard</p>
         </header>
 
-        <div id="loading" class="loading">
+        <div id="loading" class="loading" aria-live="polite" aria-label="Loading analytics data">
             <div class="spinner"></div>
             <p style="margin-top: 1rem;">Loading analytics...</p>
         </div>
 
-        <div id="dashboard" style="display: none;">
+        <div id="dashboard" class="hidden">
             <!-- Summary Stats -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -328,19 +339,19 @@
             <div class="section">
                 <h2>&#x1F4CA; Performance by Post Type</h2>
                 <div style="display:flex;gap:8px;margin-bottom:16px;">
-                    <button class="tf-btn active" onclick="switchTimeframe(24, this)">24h</button>
-                    <button class="tf-btn" onclick="switchTimeframe(72, this)">3 days</button>
-                    <button class="tf-btn" onclick="switchTimeframe(168, this)">7 days</button>
+                    <button class="tf-btn active" onclick="switchTimeframe(24, this)" aria-label="View performance metrics for 24 hours">24h</button>
+                    <button class="tf-btn" onclick="switchTimeframe(72, this)" aria-label="View performance metrics for 3 days">3 days</button>
+                    <button class="tf-btn" onclick="switchTimeframe(168, this)" aria-label="View performance metrics for 7 days">7 days</button>
                 </div>
                 <table id="performanceTable">
                     <thead>
                         <tr>
-                            <th>Type</th>
-                            <th>Posts</th>
-                            <th>Avg Likes</th>
-                            <th>Avg Replies</th>
-                            <th>Avg Retweets</th>
-                            <th>Avg Impressions</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Posts</th>
+                            <th scope="col">Avg Likes</th>
+                            <th scope="col">Avg Replies</th>
+                            <th scope="col">Avg Retweets</th>
+                            <th scope="col">Avg Impressions</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -351,9 +362,9 @@
             <div class="section">
                 <h2>&#x1F4C8; Trends by Post Type</h2>
                 <div style="display:flex;gap:8px;margin-bottom:16px;">
-                    <button class="tf-btn active" onclick="switchTrends(24, this)">24h snapshots</button>
-                    <button class="tf-btn" onclick="switchTrends(72, this)">3d snapshots</button>
-                    <button class="tf-btn" onclick="switchTrends(168, this)">7d snapshots</button>
+                    <button class="tf-btn active" onclick="switchTrends(24, this)" aria-label="View trends for 24 hour snapshots">24h snapshots</button>
+                    <button class="tf-btn" onclick="switchTrends(72, this)" aria-label="View trends for 3 day snapshots">3d snapshots</button>
+                    <button class="tf-btn" onclick="switchTrends(168, this)" aria-label="View trends for 7 day snapshots">7d snapshots</button>
                 </div>
                 <div id="trendsChart" class="chart-container" aria-label="Trends by post type chart"></div>
             </div>
@@ -376,6 +387,8 @@
                 <div id="topPosts" class="top-posts"></div>
             </div>
         </div>
+
+        <div id="refreshIndicator" class="refresh-indicator"></div>
 
         <footer>
             <p>CypherPulse v0.1.0 • Open Source Twitter Analytics</p>
@@ -595,8 +608,20 @@
             renderTopPosts(data.topPosts);
 
             // Show dashboard, hide loading
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            
+            // Update last refreshed timestamp
+            updateRefreshIndicator();
+        }
+
+        function updateRefreshIndicator() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const indicator = document.getElementById('refreshIndicator');
+            if (indicator) {
+                indicator.textContent = `Last updated: ${timeStr} • Auto-refresh every 5 minutes`;
+            }
         }
 
         // Initialize on load
