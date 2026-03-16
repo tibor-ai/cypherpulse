@@ -1,291 +1,182 @@
 #!/usr/bin/env bash
 set -e
 
-# CypherPulse Installation Script
-# Supports: Ubuntu/Debian and macOS
-
 REPO_URL="https://github.com/tibor-ai/cypherpulse.git"
 INSTALL_DIR="$HOME/cypherpulse"
-MIN_PYTHON_VERSION="3.9"
+MIN_PYTHON_MAJOR=3
+MIN_PYTHON_MINOR=9
 
-# Color codes for output
+# Colors (ASCII safe)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-echo "════════════════════════════════════════════════════"
-echo "   CypherPulse Installation"
-echo "════════════════════════════════════════════════════"
+ok()   { echo -e "${GREEN}[OK]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+err()  { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+
+echo "=================================================="
+echo "  CypherPulse Installer"
+echo "=================================================="
 echo ""
 
-# Detect OS
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    OS="linux"
-    echo "✓ Detected OS: Linux"
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    OS="macos"
-    echo "✓ Detected OS: macOS"
-else
-    echo -e "${RED}✗ Unsupported OS: $OSTYPE${NC}"
-    echo "This script supports Ubuntu/Debian and macOS only."
-    exit 1
-fi
+# --- Detect OS ---
+case "$OSTYPE" in
+  linux-gnu*) OS="linux" ;;
+  darwin*)    OS="macos" ;;
+  *)          err "Unsupported OS: $OSTYPE. Supports Ubuntu/Debian and macOS." ;;
+esac
+ok "Detected OS: $OS"
 
-echo ""
+# --- Python check / install ---
+install_python_linux() {
+    echo "Installing Python 3..."
+    sudo apt-get update -qq
+    sudo apt-get install -y python3 python3-pip python3-venv
+}
 
-# Check Python version
-check_python() {
-    if command -v python3 &> /dev/null; then
-        PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-        PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-        PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-        
-        if [ "$PYTHON_MAJOR" -ge 3 ] && [ "$PYTHON_MINOR" -ge 9 ]; then
-            echo -e "${GREEN}✓ Python $PYTHON_VERSION found${NC}"
-            return 0
-        else
-            echo -e "${YELLOW}⚠ Python $PYTHON_VERSION found (need 3.9+)${NC}"
-            return 1
-        fi
+install_python_macos() {
+    if command -v brew &>/dev/null; then
+        echo "Installing Python via Homebrew..."
+        brew install python3
     else
-        echo -e "${YELLOW}⚠ Python 3 not found${NC}"
-        return 1
+        echo "Installing Homebrew (this may take a few minutes)..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        echo "Installing Python via Homebrew..."
+        brew install python3
     fi
 }
 
-# Install Python if needed
-if ! check_python; then
-    echo ""
-    echo "Python 3.9+ is required but not found."
-    echo ""
-    
-    if [ "$OS" == "linux" ]; then
-        echo "Installing Python..."
-        
-        if sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv; then
-            echo -e "${GREEN}✓ Python installed successfully${NC}"
-            
-            # Re-check Python version
-            if check_python; then
-                echo -e "${GREEN}✓ Python is now ready${NC}"
-            else
-                echo -e "${RED}✗ Python installed but version is too old${NC}"
-                echo "Please upgrade Python manually to version 3.9 or higher."
-                exit 1
-            fi
-        else
-            echo -e "${RED}✗ Failed to install Python${NC}"
-            exit 1
-        fi
-        
-    elif [ "$OS" == "macos" ]; then
-        if command -v brew &> /dev/null; then
-            echo "Installing Python via Homebrew..."
-            
-            if brew install python3; then
-                echo -e "${GREEN}✓ Python installed successfully${NC}"
-                
-                # Re-check Python version
-                if check_python; then
-                    echo -e "${GREEN}✓ Python is now ready${NC}"
-                else
-                    echo -e "${RED}✗ Python installed but not available in PATH${NC}"
-                    echo "You may need to restart your terminal and run this script again."
-                    exit 1
-                fi
-            else
-                echo -e "${RED}✗ Homebrew installation failed${NC}"
-                exit 1
-            fi
-        else
-            echo "Installing Homebrew and Python (this may take a few minutes)..."
-            
-            # Install Homebrew
-            if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
-                echo -e "${GREEN}✓ Homebrew installed successfully${NC}"
-                
-                # Install Python
-                echo "Installing Python..."
-                if brew install python3; then
-                    echo -e "${GREEN}✓ Python installed successfully${NC}"
-                    
-                    # Re-check Python version
-                    if check_python; then
-                        echo -e "${GREEN}✓ Python is now ready${NC}"
-                    else
-                        echo -e "${RED}✗ Python installed but not available in PATH${NC}"
-                        echo "You may need to restart your terminal and run this script again."
-                        exit 1
-                    fi
-                else
-                    echo -e "${RED}✗ Python installation failed${NC}"
-                    exit 1
-                fi
-            else
-                echo -e "${RED}✗ Homebrew installation failed${NC}"
-                exit 1
-            fi
-        fi
-    fi
-fi
+check_python() {
+    if ! command -v python3 &>/dev/null; then return 1; fi
+    local ver
+    ver=$(python3 -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>/dev/null)
+    local major minor
+    major=$(echo "$ver" | cut -d. -f1)
+    minor=$(echo "$ver" | cut -d. -f2)
+    [ "$major" -ge "$MIN_PYTHON_MAJOR" ] && [ "$minor" -ge "$MIN_PYTHON_MINOR" ]
+}
 
-echo ""
-
-# Clone or update repository
-if [ -d "$INSTALL_DIR" ]; then
-    echo "📁 CypherPulse directory already exists at $INSTALL_DIR"
-    read -p "Update existing installation? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Updating repository..."
-        cd "$INSTALL_DIR"
-        git pull origin main || {
-            echo -e "${YELLOW}⚠ Git pull failed, skipping update${NC}"
-        }
-    else
-        echo "Skipping repository update"
-    fi
+if check_python; then
+    PYTHON_VER=$(python3 -c "import sys; print('%d.%d' % sys.version_info[:2])")
+    ok "Python $PYTHON_VER found"
 else
-    echo "📦 Cloning repository to $INSTALL_DIR..."
-    git clone "$REPO_URL" "$INSTALL_DIR" || {
-        echo -e "${RED}✗ Git clone failed${NC}"
-        exit 1
-    }
+    warn "Python 3.9+ not found. Installing..."
+    if [ "$OS" = "linux" ]; then
+        install_python_linux
+    else
+        install_python_macos
+    fi
+    check_python || err "Python install failed. Please install Python 3.9+ manually from https://www.python.org/downloads/"
+    ok "Python installed successfully"
 fi
 
+# --- Git check ---
+if ! command -v git &>/dev/null; then
+    warn "Git not found. Installing..."
+    if [ "$OS" = "linux" ]; then
+        sudo apt-get install -y git
+    else
+        err "Please install Git from https://git-scm.com/ and re-run this script."
+    fi
+fi
+
+# --- Clone or update repo ---
+echo ""
+if [ -d "$INSTALL_DIR/.git" ]; then
+    echo "Updating existing CypherPulse installation..."
+    cd "$INSTALL_DIR" && git pull --ff-only
+else
+    echo "Cloning CypherPulse to $INSTALL_DIR ..."
+    git clone "$REPO_URL" "$INSTALL_DIR"
+fi
+ok "Repository ready"
+
+# --- Virtualenv + dependencies ---
 cd "$INSTALL_DIR"
 echo ""
-
-# Create virtual environment
-if [ ! -d "venv" ]; then
-    echo "🐍 Creating virtual environment..."
-    python3 -m venv venv || {
-        echo -e "${RED}✗ Failed to create virtual environment${NC}"
-        exit 1
-    }
-else
-    echo "✓ Virtual environment already exists"
-fi
-
-# Activate and install dependencies
-echo "📚 Installing dependencies..."
+echo "Setting up Python environment..."
+python3 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip > /dev/null
-pip install -r requirements.txt || {
-    echo -e "${RED}✗ Failed to install dependencies${NC}"
-    exit 1
-}
+pip install --quiet --upgrade pip
+pip install --quiet -r requirements.txt
+ok "Dependencies installed"
 
-# Install package in development mode
-pip install -e . > /dev/null || {
-    echo -e "${YELLOW}⚠ Failed to install package (continuing anyway)${NC}"
-}
-
-echo ""
-
-# Copy config file if needed
+# --- Config ---
 if [ ! -f ".env" ]; then
-    echo "⚙️  Creating .env file from template..."
     cp config.example.env .env
-    echo -e "${GREEN}✓ .env file created${NC}"
+    ok "Config file created: $INSTALL_DIR/.env"
+    echo ""
+    echo "  --> Edit $INSTALL_DIR/.env and add:"
+    echo "      TWITTER_API_KEY   (get yours at https://twitterapi.io/?ref=quenosai)"
+    echo "      TWITTER_USERNAME  (your X/Twitter handle, without @)"
+    echo ""
 else
-    echo "✓ .env file already exists (not overwriting)"
+    ok ".env already exists, skipping"
 fi
 
+# --- Optional PATH symlink ---
 echo ""
-
-# Optional: Add CLI to PATH
-read -p "Add 'cypherpulse' command to your PATH? (requires sudo) (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+read -p "Add 'cypherpulse' command to PATH? (requires sudo on some systems) [y/N]: " -r PATHREPLY
+if [[ "$PATHREPLY" =~ ^[Yy]$ ]]; then
     if [ -w "/usr/local/bin" ]; then
         ln -sf "$INSTALL_DIR/venv/bin/cypherpulse" /usr/local/bin/cypherpulse
-        echo -e "${GREEN}✓ cypherpulse added to /usr/local/bin${NC}"
+        ok "cypherpulse added to /usr/local/bin"
     else
         sudo ln -sf "$INSTALL_DIR/venv/bin/cypherpulse" /usr/local/bin/cypherpulse && \
-            echo -e "${GREEN}✓ cypherpulse added to /usr/local/bin${NC}" || \
-            echo -e "${YELLOW}⚠ Failed to add to PATH (you can still use it from $INSTALL_DIR/venv/bin/cypherpulse)${NC}"
+            ok "cypherpulse added to /usr/local/bin" || \
+            warn "Could not add to PATH. Run from: $INSTALL_DIR/venv/bin/cypherpulse"
     fi
 fi
 
+# --- Optional scheduling ---
 echo ""
-echo "════════════════════════════════════════════════════"
-echo "⏰ Set up automatic data collection?"
-echo "════════════════════════════════════════════════════"
-echo ""
+echo "--------------------------------------------------"
+echo "  Automated data collection (recommended)"
+echo "--------------------------------------------------"
+read -p "Run CypherPulse automatically on a schedule? [Y/n]: " -r SCHEDREPLY
+if [[ ! "$SCHEDREPLY" =~ ^[Nn]$ ]]; then
+    echo ""
+    echo "How often?"
+    echo "  1) Hourly"
+    echo "  2) Every 6 hours"
+    echo "  3) Daily at 9am (recommended)"
+    echo "  4) Custom cron expression"
+    echo ""
+    read -p "Choice [1-4, default 3]: " -r FREQ
+    FREQ="${FREQ:-3}"
 
-read -p "Would you like CypherPulse to run automatically? (recommended) [Y/n]: " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-    echo ""
-    echo "How often should CypherPulse collect data?"
-    echo "  1 = Hourly (best for active accounts)"
-    echo "  2 = Every 6 hours"
-    echo "  3 = Daily at 9 AM (default, recommended)"
-    echo "  4 = Custom cron expression"
-    echo ""
-    read -p "Choose frequency [1-4] (default: 3): " FREQ_CHOICE
-    
-    case "${FREQ_CHOICE:-3}" in
-        1)
-            CRON_EXPRESSION="0 * * * *"
-            FREQUENCY_DESC="hourly"
-            ;;
-        2)
-            CRON_EXPRESSION="0 */6 * * *"
-            FREQUENCY_DESC="every 6 hours"
-            ;;
-        3)
-            CRON_EXPRESSION="0 9 * * *"
-            FREQUENCY_DESC="daily at 9 AM"
-            ;;
+    case "$FREQ" in
+        1) CRON_EXPR="0 * * * *";    FREQ_DESC="hourly" ;;
+        2) CRON_EXPR="0 */6 * * *";  FREQ_DESC="every 6 hours" ;;
+        3) CRON_EXPR="0 9 * * *";    FREQ_DESC="daily at 9am" ;;
         4)
-            echo ""
-            echo "Enter your custom cron expression (e.g., '0 9 * * *' for daily at 9 AM):"
-            read -p "> " CRON_EXPRESSION
-            FREQUENCY_DESC="custom schedule"
+            read -p "Enter cron expression: " -r CRON_EXPR
+            FREQ_DESC="custom schedule"
             ;;
-        *)
-            CRON_EXPRESSION="0 9 * * *"
-            FREQUENCY_DESC="daily at 9 AM"
-            ;;
+        *) CRON_EXPR="0 9 * * *";    FREQ_DESC="daily at 9am" ;;
     esac
-    
-    CYPHERPULSE_DIR="$HOME/cypherpulse"
-    CRON_CMD="cd $CYPHERPULSE_DIR && source venv/bin/activate && cypherpulse scan && cypherpulse collect"
-    
-    # Add cron job
-    (crontab -l 2>/dev/null; echo "$CRON_EXPRESSION $CRON_CMD") | crontab -
-    
-    echo ""
-    echo -e "${GREEN}✓ Cron job added. CypherPulse will collect data automatically ($FREQUENCY_DESC).${NC}"
+
+    CRON_CMD="cd $INSTALL_DIR && source venv/bin/activate && cypherpulse scan && cypherpulse collect >> $INSTALL_DIR/cypherpulse.log 2>&1"
+    (crontab -l 2>/dev/null; echo "$CRON_EXPR $CRON_CMD") | crontab -
+    ok "Cron job added ($FREQ_DESC)"
 else
-    echo ""
-    echo "You can set this up later with: cypherpulse schedule"
+    echo "Skipped. To set up later: crontab -e"
 fi
 
+# --- Done ---
 echo ""
-echo "════════════════════════════════════════════════════"
-echo -e "${GREEN}✓ Installation complete!${NC}"
-echo "════════════════════════════════════════════════════"
+echo "=================================================="
+echo "  Installation complete!"
+echo "=================================================="
 echo ""
 echo "Next steps:"
+echo "  1. Edit $INSTALL_DIR/.env with your API key and username"
+echo "  2. cd $INSTALL_DIR && source venv/bin/activate"
+echo "  3. cypherpulse scan     # fetch your recent tweets"
+echo "  4. cypherpulse collect  # snapshot engagement metrics"
+echo "  5. cypherpulse serve    # open dashboard in browser"
 echo ""
-echo "1. Get your API key from https://twitterapi.io/?ref=quenosai"
+echo "Get your twitterapi.io key: https://twitterapi.io/?ref=quenosai"
 echo ""
-echo "2. Edit your configuration:"
-echo -e "   ${YELLOW}nano $INSTALL_DIR/.env${NC}"
-echo ""
-echo "   Add your credentials:"
-echo "   TWITTER_API_KEY=your_api_key_here"
-echo "   TWITTER_USERNAME=your_twitter_username"
-echo ""
-echo "3. Start the dashboard:"
-echo -e "   ${YELLOW}cd $INSTALL_DIR${NC}"
-echo -e "   ${YELLOW}source venv/bin/activate${NC}"
-echo -e "   ${YELLOW}cypherpulse serve${NC}"
-echo ""
-echo "   Then open: http://localhost:8080"
-echo ""
-echo "════════════════════════════════════════════════════"
