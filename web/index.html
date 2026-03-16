@@ -488,6 +488,12 @@
             container.appendChild(chart);
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         function renderTopPosts(posts) {
             const container = document.getElementById('topPosts');
             container.innerHTML = '';
@@ -495,17 +501,30 @@
             posts.forEach((post, index) => {
                 const card = document.createElement('div');
                 card.className = 'post-card';
-                card.innerHTML = `
-                    <div class="post-header">
-                        <span class="post-type">${post.post_type}</span>
-                        <div class="post-metrics">
-                            <span>👁️ ${post.impressions.toLocaleString()}</span>
-                            <span>❤️ ${post.likes}</span>
-                            <span>🔁 ${post.retweets}</span>
-                        </div>
-                    </div>
-                    <div class="post-text">${post.tweet_text || 'No text available'}</div>
+                
+                const postType = document.createElement('span');
+                postType.className = 'post-type';
+                postType.textContent = post.post_type;
+                
+                const metrics = document.createElement('div');
+                metrics.className = 'post-metrics';
+                metrics.innerHTML = `
+                    <span>👁️ ${post.impressions.toLocaleString()}</span>
+                    <span>❤️ ${post.likes}</span>
+                    <span>🔁 ${post.retweets}</span>
                 `;
+                
+                const header = document.createElement('div');
+                header.className = 'post-header';
+                header.appendChild(postType);
+                header.appendChild(metrics);
+                
+                const text = document.createElement('div');
+                text.className = 'post-text';
+                text.textContent = post.tweet_text || 'No text available';
+                
+                card.appendChild(header);
+                card.appendChild(text);
                 container.appendChild(card);
             });
         }

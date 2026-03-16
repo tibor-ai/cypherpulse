@@ -321,9 +321,11 @@ Write-Host ""
 Write-Host "2. Edit your configuration:" -ForegroundColor White
 Write-Host "   notepad $InstallDir\.env" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "   Add your credentials:" -ForegroundColor White
-Write-Host "   TWITTER_API_KEY=your_api_key_here" -ForegroundColor Gray
-Write-Host "   TWITTER_USERNAME=your_twitter_username" -ForegroundColor Gray
+Write-Host "   Update these values with your actual credentials:" -ForegroundColor White
+Write-Host "   TWITTER_API_KEY=<your_actual_api_key>" -ForegroundColor Gray
+Write-Host "   TWITTER_USERNAME=<your_actual_username>" -ForegroundColor Gray
+Write-Host ""
+Write-Host "   Get your API key from: https://twitterapi.io/?ref=quenosai" -ForegroundColor Gray
 Write-Host ""
 Write-Host "3. Start the dashboard:" -ForegroundColor White
 Write-Host "   cd $InstallDir" -ForegroundColor Yellow

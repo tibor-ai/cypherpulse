@@ -78,14 +78,15 @@ else
     ok "Python installed"
 fi
 
-# ---------- git ----------
+# ---------- git (check early before attempting clone) ----------
 if ! command -v git >/dev/null 2>&1; then
     warn "Git not found. Installing..."
     if [ "$OS" = "linux" ]; then
-        sudo apt-get install -y git
+        sudo apt-get install -y git || die "Failed to install Git"
     else
         die "Install Git from https://git-scm.com/ then re-run this script."
     fi
+    ok "Git installed"
 fi
 
 # ---------- clone / update ----------
@@ -126,25 +127,50 @@ fi
 
 msg ""
 msg "Get your free API key at: https://twitterapi.io/?ref=quenosai"
-ask_silent "twitterapi.io API key:"
-API_KEY="$REPLY"
+
+# Validate API key
+while true; do
+    ask_silent "twitterapi.io API key:"
+    API_KEY="$REPLY"
+    if [ -z "$API_KEY" ]; then
+        warn "API key cannot be empty. Please try again."
+    elif [ "$API_KEY" = "your_api_key_here" ]; then
+        warn "Please enter your actual API key (not the placeholder)."
+    else
+        break
+    fi
+done
 
 msg ""
-ask "Your X/Twitter username (without @):"
-TWITTER_USER="$REPLY"
 
-# Write to .env using sed (no heredoc, safe for curl|bash)
-if grep -q "^TWITTER_API_KEY=" "$ENV_FILE"; then
-    sed -i.bak "s|^TWITTER_API_KEY=.*|TWITTER_API_KEY=$API_KEY|" "$ENV_FILE"
+# Validate username
+while true; do
+    ask "Your X/Twitter username (without @):"
+    TWITTER_USER="$REPLY"
+    # Remove @ if user included it
+    TWITTER_USER="${TWITTER_USER#@}"
+    
+    if [ -z "$TWITTER_USER" ]; then
+        warn "Username cannot be empty. Please try again."
+    elif ! echo "$TWITTER_USER" | grep -Eq '^[A-Za-z0-9_]+$'; then
+        warn "Username contains invalid characters. Use only letters, numbers, and underscores."
+    else
+        break
+    fi
+done
+
+# Write to .env using sed (safe for curl|bash, portable with .bak)
+if grep -q "^TWITTER_API_KEY=" "$ENV_FILE" 2>/dev/null; then
+    sed -i.bak "s|^TWITTER_API_KEY=.*|TWITTER_API_KEY=$API_KEY|" "$ENV_FILE" || die "Failed to update .env"
 else
-    printf '\nTWITTER_API_KEY=%s\n' "$API_KEY" >> "$ENV_FILE"
+    printf '\nTWITTER_API_KEY=%s\n' "$API_KEY" >> "$ENV_FILE" || die "Failed to write .env"
 fi
-if grep -q "^TWITTER_USERNAME=" "$ENV_FILE"; then
-    sed -i.bak "s|^TWITTER_USERNAME=.*|TWITTER_USERNAME=$TWITTER_USER|" "$ENV_FILE"
+if grep -q "^TWITTER_USERNAME=" "$ENV_FILE" 2>/dev/null; then
+    sed -i.bak "s|^TWITTER_USERNAME=.*|TWITTER_USERNAME=$TWITTER_USER|" "$ENV_FILE" || die "Failed to update .env"
 else
-    printf '\nTWITTER_USERNAME=%s\n' "$TWITTER_USER" >> "$ENV_FILE"
+    printf '\nTWITTER_USERNAME=%s\n' "$TWITTER_USER" >> "$ENV_FILE" || die "Failed to write .env"
 fi
-rm -f "$ENV_FILE.bak"
+rm -f "$ENV_FILE.bak" 2>/dev/null
 
 ok "Config saved"
 
@@ -192,7 +218,15 @@ if [ "$SCHED" = "yes" ]; then
         4)
             ask "Enter cron expression (e.g. 0 9 * * *):"
             CRON_EXPR="$REPLY"
-            FREQ_DESC="custom"
+            # Basic cron validation (5 fields)
+            FIELD_COUNT=$(echo "$CRON_EXPR" | wc -w)
+            if [ "$FIELD_COUNT" -ne 5 ]; then
+                warn "Invalid cron expression (must have 5 fields). Using default."
+                CRON_EXPR="0 9 * * *"
+                FREQ_DESC="daily at 9am (fallback)"
+            else
+                FREQ_DESC="custom"
+            fi
             ;;
         *) CRON_EXPR="0 9 * * *";   FREQ_DESC="daily at 9am" ;;
     esac

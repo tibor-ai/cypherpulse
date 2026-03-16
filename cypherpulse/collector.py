@@ -1,16 +1,23 @@
 """Tweet scanning and metrics collection for CypherPulse."""
 
-import os
+import logging
 import requests
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from .db import get_db
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 SNAPSHOT_HOURS = [24, 72, 168]  # 1 day, 3 days, 1 week
 
 
-def fetch_recent_tweets(username: str, api_key: str, days: int = 7, max_pages: int = 20):
+def fetch_recent_tweets(username: str, api_key: str, days: int = 7, max_pages: int = 20) -> List[Dict[str, Any]]:
     """Fetch tweets from the last N days using cursor pagination (20 per page)."""
+    if not username or not api_key:
+        logger.error("Username and API key are required")
+        return []
     since_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -36,7 +43,7 @@ def fetch_recent_tweets(username: str, api_key: str, days: int = 7, max_pages: i
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
-            print(f"Error fetching tweets (page {page + 1}): {e}")
+            logger.error(f"Error fetching tweets (page {page + 1}): {e}")
             break
 
         tweets = data.get("tweets", [])
@@ -66,8 +73,11 @@ def fetch_recent_tweets(username: str, api_key: str, days: int = 7, max_pages: i
     return all_tweets
 
 
-def fetch_tweet_metrics(tweet_id: str, api_key: str):
+def fetch_tweet_metrics(tweet_id: str, api_key: str) -> Optional[Dict[str, int]]:
     """Fetch metrics for a specific tweet."""
+    if not tweet_id or not api_key:
+        logger.error("Tweet ID and API key are required")
+        return None
     try:
         resp = requests.get(
             "https://api.twitterapi.io/twitter/tweets",
@@ -88,7 +98,7 @@ def fetch_tweet_metrics(tweet_id: str, api_key: str):
                 "impressions": t.get("viewCount", 0) or 0,
             }
     except Exception as e:
-        print(f"Error fetching metrics for {tweet_id}: {e}")
+        logger.error(f"Error fetching metrics for {tweet_id}: {e}")
     
     return None
 
@@ -115,12 +125,12 @@ def parse_twitter_date(date_str: str) -> str:
         return datetime.now(timezone.utc).isoformat()
 
 
-def scan_tweets(username: str, api_key: str, db_path: Optional[str] = None):
+def scan_tweets(username: str, api_key: str, db_path: Optional[str] = None) -> int:
     """Scan and register new tweets from the specified username."""
-    print(f"Scanning tweets from @{username}...")
+    logger.info(f"Scanning tweets from @{username}...")
     
     tweets = fetch_recent_tweets(username, api_key)
-    print(f"Found {len(tweets)} recent tweets")
+    logger.info(f"Found {len(tweets)} recent tweets")
     
     if not tweets:
         return 0
@@ -151,18 +161,18 @@ def scan_tweets(username: str, api_key: str, db_path: Optional[str] = None):
         """, (tweet_id, post_type, created_at, text))
         
         new_count += 1
-        print(f"  + [{post_type}] {tweet_id} — {text[:60]}")
+        logger.info(f"  + [{post_type}] {tweet_id} — {text[:60]}")
     
     conn.commit()
     conn.close()
     
-    print(f"Registered {new_count} new tweets")
+    logger.info(f"Registered {new_count} new tweets")
     return new_count
 
 
-def collect_snapshots(api_key: str, db_path: Optional[str] = None):
+def collect_snapshots(api_key: str, db_path: Optional[str] = None) -> int:
     """Collect metrics snapshots for tweets at their due measurement points."""
-    print("Collecting metric snapshots...")
+    logger.info("Collecting metric snapshots...")
     
     conn = get_db(db_path)
     now = datetime.now(timezone.utc)
@@ -217,12 +227,12 @@ def collect_snapshots(api_key: str, db_path: Optional[str] = None):
             
             updated += 1
             snap_label = {24: "24h", 72: "72h", 168: "7d"}.get(snap_hours, f"{snap_hours}h")
-            print(f"  [{snap_label}] {row['post_type']:<8} {row['tweet_id'][:16]} "
-                  f"❤️{metrics['likes']} 💬{metrics['replies']} "
-                  f"🔁{metrics['retweets']} 👁️{metrics['impressions']}")
+            logger.info(f"  [{snap_label}] {row['post_type']:<8} {row['tweet_id'][:16]} "
+                  f"likes={metrics['likes']} replies={metrics['replies']} "
+                  f"retweets={metrics['retweets']} impressions={metrics['impressions']}")
     
     conn.commit()
     conn.close()
     
-    print(f"Collected {updated} snapshots")
+    logger.info(f"Collected {updated} snapshots")
     return updated
