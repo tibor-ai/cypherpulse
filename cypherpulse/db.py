@@ -1,10 +1,11 @@
 """Database management for CypherPulse."""
 
+import os
 import sqlite3
 from pathlib import Path
 from typing import Optional
 
-DEFAULT_DB_PATH = Path.home() / ".cypherpulse" / "analytics.db"
+DEFAULT_DB_PATH = Path(os.getenv("DB_PATH", str(Path(__file__).parent.parent / "data" / "analytics.db")))
 
 
 def get_db(db_path: Optional[str] = None):
