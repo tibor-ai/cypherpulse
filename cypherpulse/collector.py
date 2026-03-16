@@ -15,6 +15,37 @@ logger = logging.getLogger(__name__)
 SNAPSHOT_HOURS = [24, 72, 168]  # 1 day, 3 days, 1 week
 
 
+def _should_continue_pagination(cursor: Optional[str], tweets: List[Dict], 
+                               cutoff: datetime) -> bool:
+    """Check if pagination should continue.
+    
+    Args:
+        cursor: Next page cursor
+        tweets: Current page of tweets
+        cutoff: Cutoff datetime for filtering
+        
+    Returns:
+        True if pagination should continue, False otherwise
+    """
+    if not cursor:
+        return False
+    
+    if not tweets:
+        return False
+    
+    # Check if oldest tweet is beyond the cutoff
+    oldest = tweets[-1].get("createdAt", "")
+    if oldest:
+        try:
+            oldest_dt = datetime.strptime(oldest, '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo=timezone.utc)
+            if oldest_dt < cutoff:
+                return False
+        except ValueError:
+            pass
+    
+    return True
+
+
 def fetch_recent_tweets(username: str, api_key: str, days: int = 7, max_pages: int = 20) -> List[Dict[str, Any]]:
     """Fetch tweets from the last N days using cursor pagination (20 per page).
     
@@ -69,18 +100,8 @@ def fetch_recent_tweets(username: str, api_key: str, days: int = 7, max_pages: i
                 all_tweets.append(t)
 
         cursor = data.get("next_cursor") or data.get("cursor")
-        if not cursor:
+        if not _should_continue_pagination(cursor, tweets, cutoff):
             break
-
-        # Stop if oldest tweet on this page is beyond our window
-        oldest = tweets[-1].get("createdAt", "")
-        if oldest:
-            try:
-                oldest_dt = datetime.strptime(oldest, '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo=timezone.utc)
-                if oldest_dt < cutoff:
-                    break
-            except ValueError:
-                pass
 
     return all_tweets
 
@@ -230,6 +251,67 @@ def scan_tweets(username: str, api_key: str, db_path: Optional[str] = None) -> i
         raise
 
 
+def _collect_snapshot_for_tweet(conn: sqlite3.Connection, row: sqlite3.Row, 
+                                api_key: str, now: datetime) -> int:
+    """Collect due snapshots for a single tweet.
+    
+    Args:
+        conn: Database connection
+        row: Tweet row with tweet_id, post_type, posted_at
+        api_key: twitterapi.io API key
+        now: Current timestamp
+        
+    Returns:
+        Number of snapshots collected for this tweet
+    """
+    try:
+        posted = datetime.fromisoformat(row["posted_at"])
+    except ValueError:
+        return 0
+    
+    age_hours = (now - posted).total_seconds() / 3600
+    snapshots_collected = 0
+    
+    for snap_hours in SNAPSHOT_HOURS:
+        # Skip if not due yet
+        if age_hours < snap_hours:
+            continue
+        
+        # Check if snapshot already exists
+        exists = conn.execute("""
+            SELECT 1 FROM tweet_snapshots 
+            WHERE tweet_id = ? AND snapshot_hours = ?
+        """, (row["tweet_id"], snap_hours)).fetchone()
+        
+        if exists:
+            continue
+        
+        # Fetch and store metrics
+        metrics = fetch_tweet_metrics(row["tweet_id"], api_key)
+        
+        if not metrics:
+            continue
+        
+        conn.execute("""
+            INSERT OR IGNORE INTO tweet_snapshots
+            (tweet_id, snapshot_hours, snapshot_at, likes, replies, 
+             retweets, quotes, impressions)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            row["tweet_id"], snap_hours, now.isoformat(),
+            metrics["likes"], metrics["replies"], metrics["retweets"],
+            metrics["quotes"], metrics["impressions"]
+        ))
+        
+        snapshots_collected += 1
+        snap_label = {24: "24h", 72: "72h", 168: "7d"}.get(snap_hours, f"{snap_hours}h")
+        logger.info(f"  [{snap_label}] {row['post_type']:<8} {row['tweet_id'][:16]} "
+              f"likes={metrics['likes']} replies={metrics['replies']} "
+              f"retweets={metrics['retweets']} impressions={metrics['impressions']}")
+    
+    return snapshots_collected
+
+
 def collect_snapshots(api_key: str, db_path: Optional[str] = None) -> int:
     """Collect metrics snapshots for tweets at their due measurement points.
     
@@ -254,51 +336,8 @@ def collect_snapshots(api_key: str, db_path: Optional[str] = None) -> int:
         """).fetchall()
         
         updated = 0
-        
         for row in rows:
-            try:
-                posted = datetime.fromisoformat(row["posted_at"])
-            except ValueError:
-                continue
-            
-            age_hours = (now - posted).total_seconds() / 3600
-            
-            for snap_hours in SNAPSHOT_HOURS:
-                # Skip if not due yet
-                if age_hours < snap_hours:
-                    continue
-                
-                # Check if snapshot already exists
-                exists = conn.execute("""
-                    SELECT 1 FROM tweet_snapshots 
-                    WHERE tweet_id = ? AND snapshot_hours = ?
-                """, (row["tweet_id"], snap_hours)).fetchone()
-                
-                if exists:
-                    continue
-                
-                # Fetch and store metrics
-                metrics = fetch_tweet_metrics(row["tweet_id"], api_key)
-                
-                if not metrics:
-                    continue
-                
-                conn.execute("""
-                    INSERT OR IGNORE INTO tweet_snapshots
-                    (tweet_id, snapshot_hours, snapshot_at, likes, replies, 
-                     retweets, quotes, impressions)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    row["tweet_id"], snap_hours, now.isoformat(),
-                    metrics["likes"], metrics["replies"], metrics["retweets"],
-                    metrics["quotes"], metrics["impressions"]
-                ))
-                
-                updated += 1
-                snap_label = {24: "24h", 72: "72h", 168: "7d"}.get(snap_hours, f"{snap_hours}h")
-                logger.info(f"  [{snap_label}] {row['post_type']:<8} {row['tweet_id'][:16]} "
-                      f"likes={metrics['likes']} replies={metrics['replies']} "
-                      f"retweets={metrics['retweets']} impressions={metrics['impressions']}")
+            updated += _collect_snapshot_for_tweet(conn, row, api_key, now)
         
         conn.commit()
         conn.close()
