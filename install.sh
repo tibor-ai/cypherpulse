@@ -257,8 +257,16 @@ if [ "$SCHED" = "yes" ]; then
     esac
 
     CRON_CMD="$INSTALL_DIR/venv/bin/cypherpulse scan && $INSTALL_DIR/venv/bin/cypherpulse collect >> $INSTALL_DIR/cypherpulse.log 2>&1"
-    ( crontab -l 2>/dev/null || true; echo "$CRON_EXPR $CRON_CMD" ) | crontab - || die "Failed to install cron job"
-    ok "Cron job added ($FREQ_DESC)"
+    # Final guard: ensure CRON_EXPR has exactly 5 fields before writing
+    FIELD_COUNT=$(echo "$CRON_EXPR" | wc -w | tr -d ' ')
+    if [ "$FIELD_COUNT" -ne 5 ]; then
+        warn "CRON_EXPR has $FIELD_COUNT fields (expected 5). Falling back to daily 9am."
+        CRON_EXPR="0 9 * * *"
+        FREQ_DESC="daily at 9am (fallback)"
+    fi
+    FULL_CRON="$CRON_EXPR $CRON_CMD"
+    ( crontab -l 2>/dev/null || true; echo "$FULL_CRON" ) | crontab - || die "Failed to install cron job"
+    ok "Cron job added ($FREQ_DESC): $CRON_EXPR"
 else
     msg "Skipped. To add later: crontab -e"
 fi
