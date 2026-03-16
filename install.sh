@@ -119,7 +119,12 @@ fi
 # --- Optional PATH symlink ---
 echo ""
 read -p "Add 'cypherpulse' command to PATH? (requires sudo on some systems) [y/N]: " -r PATHREPLY
-if [[ "$PATHREPLY" =~ ^[Yy]$ ]]; then
+case "$PATHREPLY" in
+  [Yy]*)
+PATHYES=1 ;;
+  *) PATHYES=0 ;;
+esac
+if [ "$PATHYES" = "1" ]; then
     if [ -w "/usr/local/bin" ]; then
         ln -sf "$INSTALL_DIR/venv/bin/cypherpulse" /usr/local/bin/cypherpulse
         ok "cypherpulse added to /usr/local/bin"
@@ -136,7 +141,11 @@ echo "--------------------------------------------------"
 echo "  Automated data collection (recommended)"
 echo "--------------------------------------------------"
 read -p "Run CypherPulse automatically on a schedule? [Y/n]: " -r SCHEDREPLY
-if [[ ! "$SCHEDREPLY" =~ ^[Nn]$ ]]; then
+case "$SCHEDREPLY" in
+  [Nn]*) SCHEDNO=1 ;;
+  *)     SCHEDNO=0 ;;
+esac
+if [ "$SCHEDNO" = "0" ]; then
     echo ""
     echo "How often?"
     echo "  1) Hourly"
