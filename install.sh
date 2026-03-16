@@ -184,14 +184,14 @@ else
     TWITTER_USER="$EXISTING_USERNAME"
 fi
 
-# Write to .env using sed (safe for curl|bash, portable with .bak)
+# Write to .env using sed with safe delimiter (# instead of | to prevent injection)
 if grep -q "^TWITTER_API_KEY=" "$ENV_FILE" 2>/dev/null; then
-    sed -i.bak "s|^TWITTER_API_KEY=.*|TWITTER_API_KEY=$API_KEY|" "$ENV_FILE" || die "Failed to update .env"
+    sed -i.bak "s#^TWITTER_API_KEY=.*#TWITTER_API_KEY=$API_KEY#" "$ENV_FILE" || die "Failed to update .env"
 else
     printf '\nTWITTER_API_KEY=%s\n' "$API_KEY" >> "$ENV_FILE" || die "Failed to write .env"
 fi
 if grep -q "^TWITTER_USERNAME=" "$ENV_FILE" 2>/dev/null; then
-    sed -i.bak "s|^TWITTER_USERNAME=.*|TWITTER_USERNAME=$TWITTER_USER|" "$ENV_FILE" || die "Failed to update .env"
+    sed -i.bak "s#^TWITTER_USERNAME=.*#TWITTER_USERNAME=$TWITTER_USER#" "$ENV_FILE" || die "Failed to update .env"
 else
     printf '\nTWITTER_USERNAME=%s\n' "$TWITTER_USER" >> "$ENV_FILE" || die "Failed to write .env"
 fi
