@@ -97,7 +97,12 @@ if [ -d "$INSTALL_DIR/.git" ]; then
     git -C "$INSTALL_DIR" pull --ff-only
 else
     msg "Cloning to $INSTALL_DIR ..."
-    git clone "$REPO_URL" "$INSTALL_DIR"
+    # Clone into a temp dir then move, so it works whether $INSTALL_DIR exists or not
+    TMP_CLONE="$(mktemp -d)"
+    git clone "$REPO_URL" "$TMP_CLONE/cypherpulse"
+    mkdir -p "$INSTALL_DIR"
+    cp -r "$TMP_CLONE/cypherpulse/." "$INSTALL_DIR/"
+    rm -rf "$TMP_CLONE"
 fi
 ok "Repository ready"
 
