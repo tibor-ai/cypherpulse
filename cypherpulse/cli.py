@@ -20,12 +20,17 @@ def load_config() -> Tuple[str, str]:
     Raises:
         SystemExit: If required environment variables are not set
     """
-    # Look for .env in current directory or parent
-    env_path = Path.cwd() / ".env"
-    if not env_path.exists():
-        env_path = Path.cwd().parent / ".env"
-    
-    if env_path.exists():
+    # Search order: script's own directory, cwd, cwd parent
+    # Using __file__ ensures cron (which runs from /) still finds the .env
+    _script_dir = Path(__file__).resolve().parent.parent
+    _candidates = [
+        _script_dir / ".env",
+        Path.cwd() / ".env",
+        Path.cwd().parent / ".env",
+    ]
+    env_path = next((p for p in _candidates if p.exists()), None)
+
+    if env_path:
         load_dotenv(env_path)
     
     api_key = os.getenv("TWITTER_API_KEY")
