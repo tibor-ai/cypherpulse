@@ -565,7 +565,7 @@
             const chart = document.createElement('div');
             chart.className = 'bar-chart';
 
-            labelOrder.forEach((label, i) => {
+            labelOrder.forEach((axisLabel, i) => {
                 const total = totals[i];
                 const row = document.createElement('div');
                 row.className = 'bar-row';
@@ -573,22 +573,21 @@
                 // Build stacked segments HTML
                 let segments = '';
                 types.forEach(t => {
-                    const val = map[label][t] || 0;
+                    const val = map[axisLabel][t] || 0;
                     if (val <= 0) return;
                     const pct = (val / maxTotal) * 100;
 
-                    // Add label if segment is wide enough (pct > 10%) and value is meaningful
-                    let label = '';
-                    if (pct > 10 && val >= 1) {
-                        label = `<span style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; font-size:10px; white-space:nowrap; pointer-events:none;">${Math.round(val).toLocaleString()}</span>`;
-                    }
+                    // Add value inside segment if wide enough (>10%)
+                    const segLabel = (pct > 10 && val >= 1)
+                        ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;">${Math.round(val).toLocaleString()}</span>`
+                        : '';
 
                     segments += `<div title="${t}: ${Math.round(val).toLocaleString()} avg ${valueKey.replace('avg_','')}"
-                        style="width:${pct}%; background:${typeColor(t)}; height:100%; display:inline-block; position:relative;">${label}</div>`;
+                        style="width:${pct}%;background:${typeColor(t)};height:100%;display:inline-block;position:relative;">${segLabel}</div>`;
                 });
 
                 row.innerHTML = `
-                    <div class="bar-label">${label}</div>
+                    <div class="bar-label">${axisLabel}</div>
                     <div class="bar-track" style="padding:0;overflow:hidden;display:flex;align-items:stretch;">
                         ${segments}
                         <span class="bar-value" style="position:static;padding-left:6px;color:#94a3b8;">${Math.round(total).toLocaleString()}</span>
