@@ -514,32 +514,90 @@
             });
         }
 
-        function renderBarChart(containerId, data, labelKey, valueKey) {
+        // Post type colours (consistent across all charts)
+        const TYPE_COLORS = {
+            'tweet':      '#3b82f6',
+            'post':       '#3b82f6',
+            'reply':      '#f59e0b',
+            'retweet':    '#10b981',
+            'quote':      '#8b5cf6',
+            'other':      '#64748b',
+        };
+        function typeColor(t) {
+            return TYPE_COLORS[t && t.toLowerCase()] || '#64748b';
+        }
+
+        /**
+         * Render a stacked horizontal bar chart from rows that include a post_type field.
+         * Each unique labelKey value becomes one row; segments are stacked by post_type.
+         * valueKey is the metric to display (e.g. 'avg_impressions').
+         */
+        function renderBarChart(containerId, rows, labelKey, valueKey) {
             const container = document.getElementById(containerId);
-            const maxValue = Math.max(...data.map(d => d[valueKey] || 0));
+            if (!rows || rows.length === 0) { container.innerHTML = '<p style="color:#64748b;font-size:13px;">No data yet.</p>'; return; }
+
+            // Collect unique labels (in original order) and types
+            const labelOrder = [];
+            const labelSeen = new Set();
+            rows.forEach(r => { const l = String(r[labelKey]); if (!labelSeen.has(l)) { labelOrder.push(l); labelSeen.add(l); } });
+            const types = [...new Set(rows.map(r => (r.post_type || 'other').toLowerCase()))].sort();
+
+            // Build map: label -> { type -> value }
+            const map = {};
+            labelOrder.forEach(l => { map[l] = {}; });
+            rows.forEach(r => {
+                const l = String(r[labelKey]);
+                const t = (r.post_type || 'other').toLowerCase();
+                map[l][t] = (r[valueKey] || 0);
+            });
+
+            // Max total per label (for scaling)
+            const totals = labelOrder.map(l => types.reduce((s, t) => s + (map[l][t] || 0), 0));
+            const maxTotal = Math.max(...totals, 1);
+
+            // Build legend
+            const legend = types.map(t =>
+                `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:11px;color:#94a3b8;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${typeColor(t)}"></span>${t}
+                </span>`
+            ).join('');
 
             const chart = document.createElement('div');
             chart.className = 'bar-chart';
 
-            data.forEach(item => {
-                const value = item[valueKey] || 0;
-                const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
-
+            labelOrder.forEach((label, i) => {
+                const total = totals[i];
                 const row = document.createElement('div');
                 row.className = 'bar-row';
+
+                // Build stacked segments HTML
+                let segments = '';
+                types.forEach(t => {
+                    const val = map[label][t] || 0;
+                    if (val <= 0) return;
+                    const pct = (val / maxTotal) * 100;
+                    segments += `<div title="${t}: ${Math.round(val).toLocaleString()} avg ${valueKey.replace('avg_','')}"
+                        style="width:${pct}%;background:${typeColor(t)};height:100%;display:inline-block;"></div>`;
+                });
+
                 row.innerHTML = `
-                    <div class="bar-label">${item[labelKey]}</div>
-                    <div class="bar-track">
-                        <div class="bar-fill" style="width: ${percentage}%">
-                            <span class="bar-value">${Math.round(value).toLocaleString()}</span>
-                        </div>
+                    <div class="bar-label">${label}</div>
+                    <div class="bar-track" style="padding:0;overflow:hidden;display:flex;align-items:stretch;">
+                        ${segments}
+                        <span class="bar-value" style="position:static;padding-left:6px;color:#94a3b8;">${Math.round(total).toLocaleString()}</span>
                     </div>
                 `;
                 chart.appendChild(row);
             });
 
+            // Legend below chart
+            const legendEl = document.createElement('div');
+            legendEl.style.cssText = 'margin-top:8px;';
+            legendEl.innerHTML = legend;
+
             container.innerHTML = '';
             container.appendChild(chart);
+            container.appendChild(legendEl);
         }
 
         function escapeHtml(text) {
@@ -595,9 +653,13 @@
             renderPerformanceTable(data.performance);
             renderTrendsChart(data.trends);
 
-            // Render hourly chart
+            // Render hourly chart — format hour as "14:00"
             if (data.hourly.length > 0) {
-                renderBarChart('hourlyChart', data.hourly, 'hour_utc', 'avg_impressions');
+                const hourlyFmt = data.hourly.map(r => ({
+                    ...r,
+                    hour_label: String(r.hour_utc).padStart(2,'0') + ':00'
+                }));
+                renderBarChart('hourlyChart', hourlyFmt, 'hour_label', 'avg_impressions');
             }
 
             // Render daily chart

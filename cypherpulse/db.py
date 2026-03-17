@@ -210,53 +210,50 @@ def get_top_posts(limit: int = 10, db_path: Optional[str] = None) -> List[Dict[s
 
 
 def get_hourly_performance(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get performance by hour of day (UTC).
-    
-    Args:
-        db_path: Optional path to database file
-        
+    """Get performance by hour of day (UTC), broken down by post_type.
+
     Returns:
-        List of dicts with hour_utc, posts count, and average metrics
+        List of dicts with hour_utc, post_type, posts count, and average metrics.
+        Consumers should pivot on (hour_utc, post_type) to build stacked charts.
     """
     with get_db_context(db_path) as conn:
         rows = conn.execute("""
             SELECT CAST(strftime('%H', p.posted_at) AS INTEGER) as hour_utc,
+                   p.post_type,
                    COUNT(*) as posts,
                    ROUND(AVG(s.impressions), 1) as avg_impressions,
                    ROUND(AVG(s.likes), 1) as avg_likes
             FROM tweet_snapshots s
             JOIN tweet_performance p ON p.tweet_id = s.tweet_id
             WHERE s.snapshot_hours = 24 AND p.posted_at IS NOT NULL
-            GROUP BY hour_utc
-            ORDER BY hour_utc
+            GROUP BY hour_utc, p.post_type
+            ORDER BY hour_utc, p.post_type
         """).fetchall()
-        
+
         return [dict(row) for row in rows]
 
 
 def get_daily_performance(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get performance by day of week.
-    
-    Args:
-        db_path: Optional path to database file
-        
+    """Get performance by day of week, broken down by post_type.
+
     Returns:
-        List of dicts with dow, day_name, posts count, and average metrics
+        List of dicts with dow, day_name, post_type, posts count, and average metrics.
+        Consumers should pivot on (dow, post_type) to build stacked charts.
     """
     with get_db_context(db_path) as conn:
         rows = conn.execute("""
             SELECT CAST(strftime('%w', p.posted_at) AS INTEGER) as dow,
+                   p.post_type,
                    COUNT(*) as posts,
                    ROUND(AVG(s.impressions), 1) as avg_impressions,
                    ROUND(AVG(s.likes), 1) as avg_likes
             FROM tweet_snapshots s
             JOIN tweet_performance p ON p.tweet_id = s.tweet_id
             WHERE s.snapshot_hours = 24 AND p.posted_at IS NOT NULL
-            GROUP BY dow
-            ORDER BY dow
+            GROUP BY dow, p.post_type
+            ORDER BY dow, p.post_type
         """).fetchall()
-        
-        # Map day numbers to names
+
         day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         return [
             {
