@@ -193,7 +193,8 @@ Then open your browser to `http://localhost:8080`
 
 ## 📸 Screenshots
 
-*Dashboard screenshots coming soon*
+### Impressions by Hour (UTC) — stacked by post type
+![Impressions by Hour](docs/screenshots/impressions-by-hour.jpg)
 
 ## 💡 Why CypherPulse?
 
