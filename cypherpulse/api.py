@@ -45,10 +45,7 @@ async def root() -> Union[FileResponse, Dict[str, str]]:
     """Serve the dashboard."""
     index_file = WEB_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(
-            index_file,
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
-        )
+        return FileResponse(index_file)
     logger.warning(f"Dashboard index.html not found at {index_file}, falling back to API response")
     return {"message": "CypherPulse API", "version": "0.1.0"}
 
