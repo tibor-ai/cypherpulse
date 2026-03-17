@@ -196,6 +196,9 @@ Then open your browser to `http://localhost:8080`
 ### Impressions by Hour (UTC) — stacked by post type
 ![Impressions by Hour](docs/screenshots/impressions-by-hour.jpg)
 
+### Performance by Post Type & Trends
+![Performance and Trends](docs/screenshots/performance-and-trends.jpg)
+
 ## 💡 Why CypherPulse?
 
 - **Time-series tracking** — Most analytics tools only show current stats. CypherPulse tracks how engagement evolves over days.
