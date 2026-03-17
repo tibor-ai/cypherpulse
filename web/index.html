@@ -579,7 +579,7 @@
 
                     // Add value inside segment if wide enough (>10%)
                     const segLabel = (pct > 2.5 && val >= 1)
-                        ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;">${Math.round(val).toLocaleString()}</span>`
+                        ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;${t==='reply'?'font-weight:700;':''}">${Math.round(val).toLocaleString()}</span>`
                         : '';
 
                     segments += `<div title="${t}: ${Math.round(val).toLocaleString()} avg ${valueKey.replace('avg_','')}"
