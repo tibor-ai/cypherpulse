@@ -3,335 +3,309 @@
 
 $ErrorActionPreference = "Stop"
 
-$RepoUrl = "https://github.com/tibor-ai/cypherpulse.git"
-$InstallDir = "$env:USERPROFILE\cypherpulse"
-$MinPythonVersion = [version]"3.9.0"
+$RepoUrl    = "https://github.com/tibor-ai/cypherpulse.git"
+$DefaultDir = "$env:USERPROFILE\cypherpulse"
+$MinPython  = [version]"3.9.0"
 
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "   CypherPulse Installation" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host ""
+function msg  { param($t) Write-Host $t }
+function ok   { param($t) Write-Host "[OK]  $t" -ForegroundColor Green }
+function warn { param($t) Write-Host "[!]   $t" -ForegroundColor Yellow }
+function die  { param($t) Write-Host "[ERR] $t" -ForegroundColor Red; exit 1 }
 
-# Check Python version
+msg ""
+msg "=================================================="
+msg "  CypherPulse Installer"
+msg "=================================================="
+msg ""
+
+# ---------- install location ----------
+$input = Read-Host "Install directory [default: $DefaultDir]"
+$InstallDir = if ($input.Trim() -ne "") { $input.Trim() } else { $DefaultDir }
+msg "Installing to: $InstallDir"
+
+# ---------- python ----------
 function Test-PythonVersion {
     try {
-        $pythonCmd = Get-Command python -ErrorAction Stop
-        $versionOutput = & python --version 2>&1
-        $versionString = $versionOutput -replace "Python ", ""
-        $version = [version]$versionString
-        
-        if ($version -ge $MinPythonVersion) {
-            Write-Host "✓ Python $versionString found" -ForegroundColor Green
-            return $true
-        } else {
-            Write-Host "⚠ Python $versionString found (need 3.9+)" -ForegroundColor Yellow
-            return $false
-        }
-    } catch {
-        Write-Host "⚠ Python not found" -ForegroundColor Yellow
-        return $false
-    }
+        $v = & python --version 2>&1
+        $ver = [version]($v -replace "Python ", "")
+        return $ver -ge $MinPython
+    } catch { return $false }
 }
 
-# Install Python if needed
-if (-not (Test-PythonVersion)) {
-    Write-Host ""
-    Write-Host "Python 3.9+ is required but not found." -ForegroundColor Yellow
-    Write-Host "Installing Python automatically..." -ForegroundColor Cyan
-    Write-Host ""
-    
-    $pythonInstalled = $false
-    
-    # Try winget first (Windows 11 and some Windows 10 versions)
+if (Test-PythonVersion) {
+    $pyVer = (& python --version 2>&1) -replace "Python ", ""
+    ok "Python $pyVer found"
+} else {
+    warn "Python 3.9+ not found. Installing..."
+    $installed = $false
+
     try {
-        $wingetVersion = winget --version 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Attempting installation via winget..." -ForegroundColor Cyan
-            
-            winget install --silent --accept-package-agreements --accept-source-agreements Python.Python.3.12
-            
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "✓ Python installed via winget" -ForegroundColor Green
-                $pythonInstalled = $true
-            } else {
-                Write-Host "⚠ winget installation failed, trying alternative method..." -ForegroundColor Yellow
-            }
-        }
-    } catch {
-        Write-Host "⚠ winget not available, trying alternative method..." -ForegroundColor Yellow
-    }
-    
-    # Try Chocolatey if winget failed
-    if (-not $pythonInstalled) {
+        winget --version | Out-Null
+        winget install --silent --accept-package-agreements --accept-source-agreements Python.Python.3.12
+        if ($LASTEXITCODE -eq 0) { $installed = $true; ok "Python installed via winget" }
+    } catch {}
+
+    if (-not $installed) {
         try {
-            $chocoVersion = choco --version 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Attempting installation via Chocolatey..." -ForegroundColor Cyan
-                
-                choco install python -y
-                
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host "✓ Python installed via Chocolatey" -ForegroundColor Green
-                    $pythonInstalled = $true
-                } else {
-                    Write-Host "⚠ Chocolatey installation failed, trying direct download..." -ForegroundColor Yellow
-                }
-            }
-        } catch {
-            Write-Host "⚠ Chocolatey not available, trying direct download..." -ForegroundColor Yellow
-        }
+            choco --version | Out-Null
+            choco install python -y
+            if ($LASTEXITCODE -eq 0) { $installed = $true; ok "Python installed via Chocolatey" }
+        } catch {}
     }
-    
-    # Direct download from python.org if both package managers failed
-    if (-not $pythonInstalled) {
-        Write-Host "Downloading Python installer from python.org..." -ForegroundColor Cyan
-        
+
+    if (-not $installed) {
+        $url = "https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe"
+        $tmp = "$env:TEMP\python-installer.exe"
         try {
-            $url = "https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe"
-            $installer = "$env:TEMP\python-installer.exe"
-            
-            Write-Host "Downloading from $url..." -ForegroundColor Gray
-            Invoke-WebRequest -Uri $url -OutFile $installer
-            
-            Write-Host "Running silent installer..." -ForegroundColor Gray
-            Start-Process -FilePath $installer -Args "/quiet InstallAllUsers=1 PrependPath=1" -Wait
-            
-            Remove-Item $installer
-            Write-Host "✓ Python installer completed" -ForegroundColor Green
-            $pythonInstalled = $true
-        } catch {
-            Write-Host "✗ Failed to download and install Python: $_" -ForegroundColor Red
-            Write-Host ""
-            Write-Host "Please install Python manually from https://www.python.org/downloads/windows/" -ForegroundColor Yellow
-            exit 1
-        }
+            Invoke-WebRequest -Uri $url -OutFile $tmp
+            Start-Process -FilePath $tmp -Args "/quiet InstallAllUsers=1 PrependPath=1" -Wait
+            Remove-Item $tmp
+            $installed = $true
+            ok "Python installed from python.org"
+        } catch { die "Failed to install Python. Install manually from https://www.python.org/downloads/windows/" }
     }
-    
-    # Refresh PATH environment variable
-    Write-Host ""
-    Write-Host "Refreshing PATH environment..." -ForegroundColor Cyan
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-    
-    # Re-check Python version
+
+    # Refresh PATH
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
+                [System.Environment]::GetEnvironmentVariable("Path","User")
     Start-Sleep -Seconds 2
+
     if (Test-PythonVersion) {
-        Write-Host "✓ Python is now ready" -ForegroundColor Green
+        ok "Python ready"
     } else {
-        Write-Host ""
-        Write-Host "⚠ Python was installed but is not yet available in this session." -ForegroundColor Yellow
-        Write-Host "Please close this PowerShell window and open a NEW one," -ForegroundColor Yellow
-        Write-Host "then re-run this installation script." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "This is necessary for the PATH changes to take effect." -ForegroundColor Gray
+        warn "Python was installed but PATH needs a new shell to take effect."
+        warn "Close this window, open a new PowerShell, and re-run the installer."
         exit 0
     }
 }
 
-Write-Host ""
+msg ""
 
-# Clone or update repository
-if (Test-Path $InstallDir) {
-    Write-Host "📁 CypherPulse directory already exists at $InstallDir" -ForegroundColor Yellow
-    $update = Read-Host "Update existing installation? (y/N)"
-    
-    if ($update -eq "y" -or $update -eq "Y") {
-        Write-Host "Updating repository..." -ForegroundColor Cyan
+# ---------- clone / update ----------
+if (Test-Path "$InstallDir\.git") {
+    $upd = Read-Host "Existing install found. Update it? [Y/n]"
+    if ($upd -ne "n" -and $upd -ne "N") {
         Push-Location $InstallDir
-        
         try {
             if (Get-Command git -ErrorAction SilentlyContinue) {
                 git pull origin main
-            } else {
-                Write-Host "⚠ Git not found, skipping update" -ForegroundColor Yellow
-            }
-        } catch {
-            Write-Host "⚠ Git pull failed, skipping update" -ForegroundColor Yellow
-        }
-        
+                ok "Repository updated"
+            } else { warn "Git not found, skipping update" }
+        } catch { warn "Git pull failed, skipping update" }
         Pop-Location
-    } else {
-        Write-Host "Skipping repository update" -ForegroundColor Gray
     }
 } else {
-    Write-Host "📦 Downloading CypherPulse..." -ForegroundColor Cyan
-    
-    # Try git first, fall back to ZIP download
+    msg "Cloning repository..."
     if (Get-Command git -ErrorAction SilentlyContinue) {
-        Write-Host "Using git to clone repository..." -ForegroundColor Gray
         git clone $RepoUrl $InstallDir
     } else {
-        Write-Host "Git not found, downloading ZIP..." -ForegroundColor Yellow
-        
-        $zipUrl = "https://github.com/tibor-ai/cypherpulse/archive/refs/heads/main.zip"
-        $zipPath = "$env:TEMP\cypherpulse.zip"
-        
+        warn "Git not found. Downloading ZIP..."
+        $zip = "$env:TEMP\cypherpulse.zip"
         try {
-            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
-            Expand-Archive -Path $zipPath -DestinationPath "$env:TEMP\cypherpulse-temp" -Force
-            Move-Item "$env:TEMP\cypherpulse-temp\cypherpulse-main" $InstallDir
-            Remove-Item $zipPath
-            Remove-Item "$env:TEMP\cypherpulse-temp" -Recurse
-        } catch {
-            Write-Host "✗ Failed to download repository" -ForegroundColor Red
-            exit 1
-        }
+            Invoke-WebRequest -Uri "https://github.com/tibor-ai/cypherpulse/archive/refs/heads/main.zip" -OutFile $zip
+            Expand-Archive -Path $zip -DestinationPath "$env:TEMP\cp-tmp" -Force
+            Move-Item "$env:TEMP\cp-tmp\cypherpulse-main" $InstallDir
+            Remove-Item $zip, "$env:TEMP\cp-tmp" -Recurse -ErrorAction SilentlyContinue
+        } catch { die "Failed to download repository" }
     }
+    ok "Repository ready"
 }
 
 Set-Location $InstallDir
-Write-Host ""
+msg ""
 
-# Create virtual environment
+# ---------- virtualenv + deps ----------
+msg "Setting up Python environment..."
+
 if (-not (Test-Path "venv")) {
-    Write-Host "🐍 Creating virtual environment..." -ForegroundColor Cyan
     python -m venv venv
-    
-    if (-not $?) {
-        Write-Host "✗ Failed to create virtual environment" -ForegroundColor Red
-        exit 1
+    if (-not $?) { die "Failed to create virtual environment" }
+}
+
+& ".\venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
+& ".\venv\Scripts\pip.exe" install -r requirements.txt --quiet
+if (-not $?) { die "Failed to install dependencies" }
+
+& ".\venv\Scripts\pip.exe" install -e . --quiet 2>$null
+ok "Dependencies installed"
+
+# ---------- config: API key + username ----------
+msg ""
+msg "=================================================="
+msg "  Setup"
+msg "=================================================="
+
+$EnvFile = "$InstallDir\.env"
+if (-not (Test-Path $EnvFile)) {
+    Copy-Item "config.example.env" $EnvFile
+}
+
+# Check for existing real values
+$existingKey  = (Select-String -Path $EnvFile -Pattern "^TWITTER_API_KEY=(.+)" | Select-Object -First 1).Matches.Groups[1].Value
+$existingUser = (Select-String -Path $EnvFile -Pattern "^TWITTER_USERNAME=(.+)" | Select-Object -First 1).Matches.Groups[1].Value
+
+$hasConfig = ($existingKey -and $existingKey -ne "your_api_key_here" -and
+              $existingUser -and $existingUser -ne "your_username_here")
+
+if ($hasConfig) {
+    msg ""
+    msg "Existing configuration found:"
+    msg "  API key : $($existingKey.Substring(0, [Math]::Min(8, $existingKey.Length)))..."
+    msg "  Username: $existingUser"
+    msg ""
+    $keep = Read-Host "Keep existing config? [Y/n]"
+    if ($keep -eq "n" -or $keep -eq "N") { $hasConfig = $false }
+}
+
+if (-not $hasConfig) {
+    msg ""
+    msg "Get your free API key at: https://twitterapi.io/?ref=quenosai"
+    msg ""
+
+    # Validate API key
+    while ($true) {
+        $ApiKey = Read-Host "twitterapi.io API key"
+        $ApiKey = $ApiKey.Trim()
+        if ($ApiKey -eq "") { warn "API key cannot be empty. Try again." }
+        elseif ($ApiKey -eq "your_api_key_here") { warn "Enter your actual API key, not the placeholder." }
+        else { break }
     }
+
+    msg ""
+
+    # Validate username
+    while ($true) {
+        $TwitterUser = (Read-Host "Your X/Twitter username (without @)").Trim().TrimStart("@")
+        if ($TwitterUser -eq "") { warn "Username cannot be empty. Try again." }
+        elseif ($TwitterUser -notmatch '^[A-Za-z0-9_]+$') { warn "Invalid characters. Use only letters, numbers, and underscores." }
+        else { break }
+    }
+
+    # Write values to .env
+    $envContent = Get-Content $EnvFile -Raw
+    if ($envContent -match "TWITTER_API_KEY=") {
+        $envContent = $envContent -replace "TWITTER_API_KEY=.*", "TWITTER_API_KEY=$ApiKey"
+    } else {
+        $envContent += "`nTWITTER_API_KEY=$ApiKey"
+    }
+    if ($envContent -match "TWITTER_USERNAME=") {
+        $envContent = $envContent -replace "TWITTER_USERNAME=.*", "TWITTER_USERNAME=$TwitterUser"
+    } else {
+        $envContent += "`nTWITTER_USERNAME=$TwitterUser"
+    }
+    Set-Content -Path $EnvFile -Value $envContent -NoNewline
+    ok "Config saved"
 } else {
-    Write-Host "✓ Virtual environment already exists" -ForegroundColor Green
+    $ApiKey = $existingKey
+    $TwitterUser = $existingUser
 }
 
-# Activate and install dependencies
-Write-Host "📚 Installing dependencies..." -ForegroundColor Cyan
+# ---------- optional scheduling ----------
+msg ""
+msg "--------------------------------------------------"
+msg "  Automated data collection"
+msg "--------------------------------------------------"
+$sched = Read-Host "Schedule automatic data collection? [Y/n]"
 
-& "$InstallDir\venv\Scripts\Activate.ps1"
+if ($sched -ne "n" -and $sched -ne "N") {
+    msg ""
+    msg "How often?"
+    msg "  1) Hourly"
+    msg "  2) Every 6 hours"
+    msg "  3) Daily at 9 AM (recommended)"
+    msg "  4) Custom"
+    msg ""
+    $freq = Read-Host "Choice [1-4, default 3]"
+    if ([string]::IsNullOrWhiteSpace($freq)) { $freq = "3" }
 
-python -m pip install --upgrade pip | Out-Null
-python -m pip install -r requirements.txt
-
-if (-not $?) {
-    Write-Host "✗ Failed to install dependencies" -ForegroundColor Red
-    exit 1
-}
-
-# Install package in development mode
-python -m pip install -e . 2>&1 | Out-Null
-
-Write-Host ""
-
-# Copy config file if needed
-if (-not (Test-Path ".env")) {
-    Write-Host "⚙️  Creating .env file from template..." -ForegroundColor Cyan
-    Copy-Item "config.example.env" ".env"
-    Write-Host "✓ .env file created" -ForegroundColor Green
-} else {
-    Write-Host "✓ .env file already exists (not overwriting)" -ForegroundColor Green
-}
-
-Write-Host ""
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "⏰ Set up automatic data collection?" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host ""
-
-$schedule = Read-Host "Would you like CypherPulse to run automatically? (recommended) [Y/n]"
-
-if ($schedule -ne "n" -and $schedule -ne "N") {
-    Write-Host ""
-    Write-Host "How often should CypherPulse collect data?" -ForegroundColor Cyan
-    Write-Host "  1 = Hourly (best for active accounts)" -ForegroundColor White
-    Write-Host "  2 = Every 6 hours" -ForegroundColor White
-    Write-Host "  3 = Daily at 9 AM (default, recommended)" -ForegroundColor White
-    Write-Host "  4 = Custom schedule" -ForegroundColor White
-    Write-Host ""
-    
-    $freqChoice = Read-Host "Choose frequency [1-4] (default: 3)"
-    if ([string]::IsNullOrEmpty($freqChoice)) { $freqChoice = "3" }
-    
+    $cp = "$InstallDir\venv\Scripts\cypherpulse.exe"
     $action = New-ScheduledTaskAction -Execute "powershell.exe" `
-        -Argument "-WindowStyle Hidden -Command `"cd $InstallDir; .\venv\Scripts\activate; cypherpulse scan; cypherpulse collect`""
-    
-    switch ($freqChoice) {
+        -Argument "-WindowStyle Hidden -NonInteractive -Command `"& '$cp' scan; & '$cp' collect`""
+
+    switch ($freq) {
         "1" {
-            $trigger = New-ScheduledTaskTrigger -Once -At "9:00AM" -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
+            $trigger  = New-ScheduledTaskTrigger -Once -At "9:00AM" -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
             $freqDesc = "hourly"
         }
         "2" {
-            $trigger = New-ScheduledTaskTrigger -Once -At "9:00AM" -RepetitionInterval (New-TimeSpan -Hours 6) -RepetitionDuration ([TimeSpan]::MaxValue)
+            $trigger  = New-ScheduledTaskTrigger -Once -At "9:00AM" -RepetitionInterval (New-TimeSpan -Hours 6) -RepetitionDuration ([TimeSpan]::MaxValue)
             $freqDesc = "every 6 hours"
         }
-        "3" {
-            $trigger = New-ScheduledTaskTrigger -Daily -At "9:00AM"
-            $freqDesc = "daily at 9 AM"
-        }
         "4" {
-            Write-Host ""
-            Write-Host "Custom scheduling options:" -ForegroundColor Cyan
-            Write-Host "  1 = Daily at custom time" -ForegroundColor White
-            Write-Host "  2 = Weekly on specific day" -ForegroundColor White
-            Write-Host "  3 = Hourly (with custom start time)" -ForegroundColor White
-            
-            $customType = Read-Host "Choose option [1-3]"
-            
-            switch ($customType) {
-                "1" {
-                    $customTime = Read-Host "Enter time (e.g., 2:30PM)"
-                    $trigger = New-ScheduledTaskTrigger -Daily -At $customTime
-                    $freqDesc = "daily at $customTime"
-                }
-                "2" {
-                    $customDay = Read-Host "Enter day (e.g., Monday)"
-                    $customTime = Read-Host "Enter time (e.g., 9:00AM)"
-                    $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $customDay -At $customTime
-                    $freqDesc = "weekly on $customDay at $customTime"
-                }
-                "3" {
-                    $customTime = Read-Host "Enter start time (e.g., 9:00AM)"
-                    $trigger = New-ScheduledTaskTrigger -Once -At $customTime -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
-                    $freqDesc = "hourly starting at $customTime"
-                }
-                default {
-                    $trigger = New-ScheduledTaskTrigger -Daily -At "9:00AM"
-                    $freqDesc = "daily at 9 AM"
-                }
+            msg ""
+            msg "Custom options:"
+            msg "  1) Daily at custom time"
+            msg "  2) Weekly on specific day"
+            $ct = Read-Host "Option [1-2]"
+            if ($ct -eq "2") {
+                $day  = Read-Host "Day (e.g. Monday)"
+                $time = Read-Host "Time (e.g. 9:00AM)"
+                $trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $day -At $time
+                $freqDesc = "weekly on $day at $time"
+            } else {
+                $time = Read-Host "Time (e.g. 2:30PM)"
+                $trigger  = New-ScheduledTaskTrigger -Daily -At $time
+                $freqDesc = "daily at $time"
             }
         }
         default {
-            $trigger = New-ScheduledTaskTrigger -Daily -At "9:00AM"
+            $trigger  = New-ScheduledTaskTrigger -Daily -At "9:00AM"
             $freqDesc = "daily at 9 AM"
         }
     }
-    
+
     try {
         Register-ScheduledTask -TaskName "CypherPulse" -Action $action -Trigger $trigger -Force | Out-Null
-        Write-Host ""
-        Write-Host "✓ Scheduled task added. CypherPulse will collect data automatically ($freqDesc)." -ForegroundColor Green
+        ok "Scheduled task added ($freqDesc)"
     } catch {
-        Write-Host ""
-        Write-Host "⚠ Failed to create scheduled task. You may need to run PowerShell as Administrator." -ForegroundColor Yellow
-        Write-Host "You can set this up later — see README for instructions." -ForegroundColor Yellow
+        warn "Could not create scheduled task (needs Administrator). Set it up later — see README."
     }
 } else {
-    Write-Host ""
-    Write-Host "You can set this up later — see README for instructions." -ForegroundColor Gray
+    msg "Skipped. To add later, see README."
 }
 
-Write-Host ""
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "✓ Installation complete!" -ForegroundColor Green
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "1. Get your API key from https://twitterapi.io/?ref=quenosai" -ForegroundColor White
-Write-Host ""
-Write-Host "2. Edit your configuration:" -ForegroundColor White
-Write-Host "   notepad $InstallDir\.env" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "   Update these values with your actual credentials:" -ForegroundColor White
-Write-Host "   TWITTER_API_KEY=<your_actual_api_key>" -ForegroundColor Gray
-Write-Host "   TWITTER_USERNAME=<your_actual_username>" -ForegroundColor Gray
-Write-Host ""
-Write-Host "   Get your API key from: https://twitterapi.io/?ref=quenosai" -ForegroundColor Gray
-Write-Host ""
-Write-Host "3. Start the dashboard:" -ForegroundColor White
-Write-Host "   cd $InstallDir" -ForegroundColor Yellow
-Write-Host "   .\venv\Scripts\Activate.ps1" -ForegroundColor Yellow
-Write-Host "   cypherpulse serve" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "   Then open: http://localhost:8080" -ForegroundColor White
-Write-Host ""
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Cyan
+# ---------- initial data collection ----------
+msg ""
+msg "=================================================="
+msg "  Fetching your initial data..."
+msg "=================================================="
+msg ""
+
+$cp = "$InstallDir\venv\Scripts\cypherpulse.exe"
+
+msg "Scanning your recent tweets..."
+try {
+    & $cp scan
+    ok "Scan complete"
+} catch { die "Failed to scan tweets. Check your API key and username in $EnvFile" }
+
+msg ""
+msg "Collecting engagement metrics..."
+try {
+    & $cp collect
+    ok "Metrics collected"
+} catch { warn "Metrics collection failed. Run 'cypherpulse collect' manually after a few minutes." }
+
+# ---------- launch dashboard ----------
+msg ""
+$launch = Read-Host "Open the dashboard now in your browser? [Y/n]"
+if ($launch -ne "n" -and $launch -ne "N") {
+    msg "Starting dashboard at http://localhost:8080 ..."
+    msg "(Press Ctrl+C to stop)"
+    msg ""
+    & $cp serve
+}
+
+# ---------- done ----------
+msg ""
+msg "=================================================="
+msg "  CypherPulse is ready!"
+msg "=================================================="
+msg ""
+msg "To run manually:"
+msg "  cd $InstallDir"
+msg "  .\venv\Scripts\Activate.ps1"
+msg "  cypherpulse scan      # fetch new tweets"
+msg "  cypherpulse collect   # snapshot metrics"
+msg "  cypherpulse serve     # open dashboard"
+msg ""
