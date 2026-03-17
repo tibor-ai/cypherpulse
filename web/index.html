@@ -578,7 +578,7 @@
                     const pct = (val / maxTotal) * 100;
 
                     // Add value inside segment if wide enough (>10%)
-                    const segLabel = (pct > 5 && val >= 1)
+                    const segLabel = (pct > 2.5 && val >= 1)
                         ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;">${Math.round(val).toLocaleString()}</span>`
                         : '';
 
