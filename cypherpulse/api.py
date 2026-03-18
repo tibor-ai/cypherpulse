@@ -9,6 +9,20 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
 
+# Load .env early so TWITTER_API_KEY is available to the API server
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    for _env_candidate in [
+        Path(__file__).resolve().parent.parent / ".env",
+        Path.cwd() / ".env",
+        Path.cwd().parent / ".env",
+    ]:
+        if _env_candidate.exists():
+            _load_dotenv(_env_candidate)
+            break
+except ImportError:
+    pass
+
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
