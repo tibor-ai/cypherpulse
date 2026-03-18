@@ -485,7 +485,8 @@ def get_word_bubbles(
         min_tweets: Minimum number of tweets a word/bigram must appear in
         top_n: Maximum number of words to return
         mode: 'words' (default) — single words only; 'pairs' — PMI bigrams only;
-              'both' — merge words + pairs, sort by score
+              'trigrams' — PMI trigrams only; 'both' — merge words + pairs;
+              'all' — merge words + pairs + trigrams, sort by score
         db_path: Optional path to database file
 
     Returns:
@@ -527,6 +528,8 @@ def get_word_bubbles(
     word_data: Dict[str, Any] = {}
     # bigram -> {tweets: set of tweet_ids, imp_sum}
     bigram_data: Dict[str, Any] = {}
+    # trigram -> {tweets: set of tweet_ids, imp_sum}
+    trigram_data: Dict[str, Any] = {}
     # unigram tweet sets used for PMI calculation (regular words only, no hashtags)
     unigram_for_pmi: Dict[str, Any] = {}
 
@@ -593,6 +596,18 @@ def get_word_bubbles(
                 bigram_data[bigram]['tweets'].add(tweet_id)
                 bigram_data[bigram]['imp_sum'] += impressions
 
+        # Trigram extraction: adjacent triplets, no stopwords, no hashtags
+        seen_trigrams: set = set()
+        for i in range(len(ordered_tokens) - 2):
+            a, b, c = ordered_tokens[i], ordered_tokens[i + 1], ordered_tokens[i + 2]
+            trigram = f"{a} {b} {c}"
+            if trigram not in seen_trigrams:
+                seen_trigrams.add(trigram)
+                if trigram not in trigram_data:
+                    trigram_data[trigram] = {'tweets': set(), 'imp_sum': 0}
+                trigram_data[trigram]['tweets'].add(tweet_id)
+                trigram_data[trigram]['imp_sum'] += impressions
+
     def _build_word_results() -> List[Dict[str, Any]]:
         results = []
         for word, data in word_data.items():
@@ -649,10 +664,51 @@ def get_word_bubbles(
             })
         return results
 
+    def _build_trigram_results() -> List[Dict[str, Any]]:
+        trigram_min = max(min_tweets, 2)  # trigrams must appear in 2+ tweets minimum
+        results = []
+        for trigram, data in trigram_data.items():
+            count = len(data['tweets'])
+            if count < trigram_min:
+                continue
+            avg_imp = round(data['imp_sum'] / count, 1)
+
+            # PMI for trigrams: log( P(a,b,c) / (P(a) * P(b) * P(c)) )
+            parts = trigram.split(' ', 2)
+            a, b, c = parts[0], parts[1], parts[2]
+            pa = len(unigram_for_pmi.get(a, set())) / max(total_tweets, 1)
+            pb = len(unigram_for_pmi.get(b, set())) / max(total_tweets, 1)
+            pc = len(unigram_for_pmi.get(c, set())) / max(total_tweets, 1)
+            pabc = count / max(total_tweets, 1)
+            if pa > 0 and pb > 0 and pc > 0:
+                pmi = math.log(pabc / (pa * pb * pc))
+            else:
+                pmi = 0.0
+
+            pmi_weight = max(0.1, pmi)
+            idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+            confidence = min(count / 5.0, 1.0)
+            score = round(avg_imp * idf * pmi_weight * confidence, 2)
+
+            results.append({
+                'word': trigram,
+                'count': count,
+                'avg_impressions': avg_imp,
+                'score': score,
+                'is_hashtag': False,
+                'is_bigram': False,
+                'is_trigram': True,
+            })
+        return results
+
     if mode == 'pairs':
         results = _build_bigram_results()
+    elif mode == 'trigrams':
+        results = _build_trigram_results()
     elif mode == 'both':
         results = _build_word_results() + _build_bigram_results()
+    elif mode == 'all':
+        results = _build_word_results() + _build_bigram_results() + _build_trigram_results()
     else:  # 'words' (default)
         results = _build_word_results()
 

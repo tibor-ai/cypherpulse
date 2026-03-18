@@ -228,15 +228,16 @@ async def api_word_bubbles(
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     min_tweets: int = Query(default=2, ge=1, le=100, description="Minimum tweet count per word"),
     top_n: int = Query(default=50, ge=1, le=200, description="Maximum number of words to return"),
-    mode: str = Query(default='words', description="Mode: 'words' (single words), 'pairs' (PMI bigrams), 'both' (merged)"),
+    mode: str = Query(default='words', description="Mode: 'words' (single words), 'pairs' (PMI bigrams), 'trigrams' (PMI trigrams), 'both' (words+pairs), 'all' (words+pairs+trigrams)"),
 ) -> JSONResponse:
     """Get word frequency bubble chart data.
 
-    Returns list of {word, count, avg_impressions, score, is_hashtag, is_bigram}.
-    Mode 'words' = single words (default), 'pairs' = PMI bigrams, 'both' = merged.
+    Returns list of {word, count, avg_impressions, score, is_hashtag, is_bigram, is_trigram}.
+    Mode 'words' = single words (default), 'pairs' = PMI bigrams, 'trigrams' = PMI trigrams,
+    'both' = words+pairs merged, 'all' = words+pairs+trigrams merged.
     """
-    if mode not in ('words', 'pairs', 'both'):
-        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', or 'both'")
+    if mode not in ('words', 'pairs', 'both', 'trigrams', 'all'):
+        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', 'both', 'trigrams', or 'all'")
     try:
         data = get_word_bubbles(
             days=days,
@@ -407,6 +408,7 @@ def _score_tweets(
 
     word_data: Dict[str, Any] = {}
     bigram_data: Dict[str, Any] = {}
+    trigram_data: Dict[str, Any] = {}
     unigram_for_pmi: Dict[str, Any] = {}
 
     # Build tweet_id -> engagement map (likes + retweets*3 as impression proxy)
@@ -466,6 +468,16 @@ def _score_tweets(
                     bigram_data[bigram] = {'tweets': set()}
                 bigram_data[bigram]['tweets'].add(tweet_id)
 
+        seen_trigrams: set = set()
+        for i in range(len(ordered_tokens) - 2):
+            a, b, c = ordered_tokens[i], ordered_tokens[i + 1], ordered_tokens[i + 2]
+            trigram = f"{a} {b} {c}"
+            if trigram not in seen_trigrams:
+                seen_trigrams.add(trigram)
+                if trigram not in trigram_data:
+                    trigram_data[trigram] = {'tweets': set()}
+                trigram_data[trigram]['tweets'].add(tweet_id)
+
     def _avg_engagement(tweet_ids: set) -> float:
         """Average engagement score for a set of tweet IDs."""
         vals = [tweet_engagements.get(tid, 0.0) for tid in tweet_ids]
@@ -517,10 +529,44 @@ def _score_tweets(
             })
         return results
 
+    def _build_trigram_results() -> List[Dict[str, Any]]:
+        trigram_min = max(min_tweets, 2)
+        results = []
+        for trigram, data in trigram_data.items():
+            count = len(data['tweets'])
+            if count < trigram_min:
+                continue
+            avg_eng = _avg_engagement(data['tweets'])
+            parts = trigram.split(' ', 2)
+            a, b, c = parts[0], parts[1], parts[2]
+            pa = len(unigram_for_pmi.get(a, set())) / max(total_tweets, 1)
+            pb = len(unigram_for_pmi.get(b, set())) / max(total_tweets, 1)
+            pc = len(unigram_for_pmi.get(c, set())) / max(total_tweets, 1)
+            pabc = count / max(total_tweets, 1)
+            pmi = math.log(pabc / (pa * pb * pc)) if pa > 0 and pb > 0 and pc > 0 else 0.0
+            pmi_weight = max(0.1, pmi)
+            idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+            confidence = min(count / 5.0, 1.0)
+            score = round(avg_eng * idf * pmi_weight * confidence, 2)
+            results.append({
+                'word': trigram,
+                'count': count,
+                'avg_impressions': avg_eng,
+                'score': score,
+                'is_hashtag': False,
+                'is_bigram': False,
+                'is_trigram': True,
+            })
+        return results
+
     if mode == 'pairs':
         results = _build_bigram_results()
+    elif mode == 'trigrams':
+        results = _build_trigram_results()
     elif mode == 'both':
         results = _build_word_results() + _build_bigram_results()
+    elif mode == 'all':
+        results = _build_word_results() + _build_bigram_results() + _build_trigram_results()
     else:
         results = _build_word_results()
 
@@ -549,8 +595,8 @@ async def api_benchmark(
     clean_handle = handle.lstrip('@')
     if not _HANDLE_RE.match(clean_handle):
         raise HTTPException(status_code=400, detail="Invalid handle: alphanumeric + underscore only, max 50 chars")
-    if mode not in ('words', 'pairs', 'both'):
-        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', or 'both'")
+    if mode not in ('words', 'pairs', 'both', 'trigrams', 'all'):
+        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', 'both', 'trigrams', or 'all'")
 
     api_key = _load_twitterapi_key()
     if not api_key:
@@ -582,8 +628,8 @@ async def api_benchmark_rescore(
     """Rescore already-fetched tweets with new parameters (mode/min_tweets/top_n).
     Accepts the cached tweet list from the frontend — no re-fetching.
     """
-    if mode not in ('words', 'pairs', 'both'):
-        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', or 'both'")
+    if mode not in ('words', 'pairs', 'both', 'trigrams', 'all'):
+        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', 'both', 'trigrams', or 'all'")
     try:
         data = _score_tweets(tweets, mode=mode, min_tweets=min_tweets, top_n=top_n)
     except Exception as e:

@@ -629,7 +629,8 @@
                     <div>
                         <button class="tf-btn active" onclick="setWordBubbleMode('words',this)" aria-label="Show single words">Words</button>
                         <button class="tf-btn" onclick="setWordBubbleMode('pairs',this)" aria-label="Show word pairs (PMI bigrams)">Pairs</button>
-                        <button class="tf-btn" onclick="setWordBubbleMode('both',this)" aria-label="Show words and pairs together">Both</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('trigrams',this)" aria-label="Show word trigrams (PMI trigrams)">Trigrams</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('all',this)" aria-label="Show words, pairs, and trigrams together">All</button>
                     </div>
                     <label style="color:#94a3b8;font-size:0.875rem;">Min. tweets:
                         <input type="number" id="wordBubbleMinTweets" value="2" min="2" max="20"
@@ -1160,12 +1161,17 @@
                 circle.setAttribute('fill', fillColor);
                 circle.setAttribute('opacity', '0.9');
 
-                // Bigrams get a dashed stroke border; hashtags/words get solid
+                // Bigrams get a dashed stroke border; trigrams get dotted; hashtags/words get solid
                 if (c.is_bigram) {
                     circle.setAttribute('stroke', wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax));
                     circle.setAttribute('stroke-width', '2');
                     circle.setAttribute('stroke-dasharray', '4,2');
                     circle.setAttribute('fill-opacity', '0.75');
+                } else if (c.is_trigram) {
+                    circle.setAttribute('stroke', wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax));
+                    circle.setAttribute('stroke-width', '2');
+                    circle.setAttribute('stroke-dasharray', '2,2');
+                    circle.setAttribute('fill-opacity', '0.65');
                 }
 
                 const label = document.createElementNS(ns, 'text');
@@ -1188,8 +1194,10 @@
                 const displayWord = c.word.length > maxChars ? c.word.slice(0, maxChars) + '…' : c.word;
                 label.textContent = displayWord;
 
-                const kindLabel = c.is_bigram ? 'pair' : (c.is_hashtag ? 'hashtag' : 'word');
-                const tip = `${c.word} [${kindLabel}] — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''} (score: ${c.score != null ? c.score.toFixed(1) : '—'})`;
+                const kindLabel = c.is_trigram ? 'trigram' : (c.is_bigram ? 'pair' : (c.is_hashtag ? 'hashtag' : 'word'));
+                const tip = c.is_trigram
+                    ? `[trigram] ${c.word} — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''}`
+                    : `${c.word} [${kindLabel}] — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''} (score: ${c.score != null ? c.score.toFixed(1) : '—'})`;
 
                 g.addEventListener('mouseenter', e => showTooltip(e, tip));
                 g.addEventListener('mousemove',  e => moveTooltip(e));
@@ -1205,6 +1213,7 @@
 
             // Legend
             const hasBigrams = words.some(w => w.is_bigram);
+            const hasTrigrams = words.some(w => w.is_trigram);
             const hasHashtags = words.some(w => w.is_hashtag);
             let legendHtml = '';
             if (hasHashtags) {
@@ -1228,6 +1237,16 @@
                             stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,2"/>
                     </svg>
                     Word pair (bigram, dashed)
+                </span>`;
+            }
+            if (hasTrigrams) {
+                legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink:0;">
+                        <circle cx="8" cy="8" r="6" fill="#3b82f6" fill-opacity="0.65"
+                            stroke="#3b82f6" stroke-width="2" stroke-dasharray="2,2"/>
+                    </svg>
+                    Trigram (dotted)
                 </span>`;
             }
             legendHtml += `
