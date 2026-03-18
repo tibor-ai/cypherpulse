@@ -562,6 +562,10 @@ def get_word_bubbles(
             word_data[token]['tweets'].add(tweet_id)
             word_data[token]['imp_sum'] += impressions
 
+    import math
+
+    total_tweets = len(rows)  # total tweet corpus size for IDF weighting
+
     # Build result list
     results = []
     for word, data in word_data.items():
@@ -569,15 +573,23 @@ def get_word_bubbles(
         if count < min_tweets:
             continue
         avg_imp = round(data['imp_sum'] / count, 1)
+
+        # IDF-weighted score: penalises words that appear in most tweets.
+        # Words in every tweet carry no discriminating signal — they score near 0.
+        # score = avg_impressions * log(total_tweets / count)
+        idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+        score = round(avg_imp * idf, 2)
+
         results.append({
             'word': word,
             'count': count,
-            'avg_impressions': avg_imp,
+            'avg_impressions': avg_imp,   # kept for tooltip
+            'score': score,               # bubble size — IDF-weighted
             'is_hashtag': word.startswith('#'),
         })
 
-    # Sort by avg_impressions descending, take top_n
-    results.sort(key=lambda x: x['avg_impressions'], reverse=True)
+    # Sort by IDF-weighted score, take top_n
+    results.sort(key=lambda x: x['score'], reverse=True)
     return results[:top_n]
 
 

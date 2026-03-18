@@ -845,23 +845,28 @@
             const MAX_R = 60;
             const PADDING = 12;
 
-            // Compute radius scale
-            const maxImp = Math.max(...words.map(w => w.avg_impressions));
-            const minImp = Math.min(...words.map(w => w.avg_impressions));
+            // Size bubbles by IDF-weighted score (not raw avg_impressions).
+            // This prevents words that appear in every tweet from dominating
+            // just because they inherit impressions from all tweets.
+            const scores = words.map(w => w.score != null ? w.score : w.avg_impressions);
+            const maxScore = Math.max(...scores);
+            const minScore = Math.min(...scores);
 
-            function getRadius(imp) {
-                if (maxImp === minImp) return (MIN_R + MAX_R) / 2;
-                const t = (imp - minImp) / (maxImp - minImp);
+            function getRadius(w) {
+                const s = w.score != null ? w.score : w.avg_impressions;
+                if (maxScore === minScore) return (MIN_R + MAX_R) / 2;
+                const t = (s - minScore) / (maxScore - minScore);
                 return MIN_R + t * (MAX_R - MIN_R);
             }
 
-            // Get regular words min/max for colour scale
+            // Get regular words score range for colour scale
             const regularWords = words.filter(w => !w.is_hashtag);
-            const regMin = regularWords.length ? Math.min(...regularWords.map(w => w.avg_impressions)) : 0;
-            const regMax = regularWords.length ? Math.max(...regularWords.map(w => w.avg_impressions)) : 1;
+            const regScores = regularWords.map(w => w.score != null ? w.score : w.avg_impressions);
+            const regMin = regScores.length ? Math.min(...regScores) : 0;
+            const regMax = regScores.length ? Math.max(...regScores) : 1;
 
             // Layout: row-based packing
-            const circles = words.map(w => ({ ...w, r: getRadius(w.avg_impressions) }));
+            const circles = words.map(w => ({ ...w, r: getRadius(w) }));
 
             // Place circles row by row
             let rows = [];
@@ -919,7 +924,7 @@
                 circle.setAttribute('r', c.r);
                 circle.setAttribute('fill', c.is_hashtag
                     ? '#f59e0b'
-                    : wordBubbleBlueColor(c.avg_impressions, regMin, regMax));
+                    : wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax));
                 circle.setAttribute('opacity', '0.9');
 
                 const label = document.createElementNS(ns, 'text');
@@ -932,7 +937,8 @@
                 label.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, sans-serif');
                 label.setAttribute('font-weight', '600');
                 // Text colour: dark on light backgrounds, light on dark
-                const textColor = c.is_hashtag ? '#1c1917' : (c.avg_impressions > (regMin + regMax) / 2 ? '#e0f2fe' : '#0c4a6e');
+                const cScore = c.score != null ? c.score : c.avg_impressions;
+                const textColor = c.is_hashtag ? '#1c1917' : (cScore > (regMin + regMax) / 2 ? '#e0f2fe' : '#0c4a6e');
                 label.setAttribute('fill', textColor);
                 label.setAttribute('pointer-events', 'none');
 
@@ -941,7 +947,7 @@
                 const displayWord = c.word.length > maxChars ? c.word.slice(0, maxChars) + '…' : c.word;
                 label.textContent = displayWord;
 
-                const tip = `${c.word} — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''}`;
+                const tip = `${c.word} — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''} (score: ${c.score != null ? c.score.toFixed(1) : '—'})`;
 
                 g.addEventListener('mouseenter', e => showTooltip(e, tip));
                 g.addEventListener('mousemove',  e => moveTooltip(e));
