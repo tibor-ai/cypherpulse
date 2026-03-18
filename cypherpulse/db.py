@@ -665,7 +665,7 @@ def get_word_bubbles(
         return results
 
     def _build_trigram_results() -> List[Dict[str, Any]]:
-        trigram_min = 2  # trigrams are rare — always use 2 regardless of user setting
+        trigram_min = max(min_tweets, 2)  # min 2, user can set higher
         results = []
         for trigram, data in trigram_data.items():
             count = len(data['tweets'])
