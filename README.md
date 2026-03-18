@@ -12,8 +12,12 @@ CypherPulse automatically collects engagement metrics at 24h, 72h, and 7-day int
 
 - 📊 **Automated Metrics Collection** — Snapshots at 24h, 72h, and 7 days after posting
 - 📈 **Performance Analytics** — Track engagement by post type (tweets, replies, retweets)
-- ⏰ **Timing Insights** — Discover your best hours and days to post
+- ⏰ **Timing Insights** — Hour×day heatmap showing your best posting windows
+- 📉 **Impression Decay** — See how engagement evolves after posting (Day 1 → Day 3 → Day 7)
+- ☁️ **Word Bubble Chart** — IDF-weighted word, bigram, and trigram analysis of what language drives impressions
+- 🔍 **Benchmark Comparison** — Compare your word patterns against any X/Twitter account side-by-side
 - 🎯 **Top Posts Tracking** — See which content performs best
+- 📅 **Global Date Range Filter** — Slice all charts by 24h, 7d, 14d, 1M, or custom range
 - 🌐 **Beautiful Dashboard** — Dark-themed, responsive web interface
 - 🔧 **Simple CLI** — Scan, collect, and report from the command line
 
@@ -193,6 +197,9 @@ Then open your browser to `http://localhost:8080`
 
 ## 📸 Screenshots
 
+### ☁️ Word Bubble Chart — with benchmark comparison against any handle
+![Word Bubble Chart](docs/screenshots/word-bubble-chart.jpg)
+
 ### Impressions by Hour (UTC) — stacked by post type
 ![Impressions by Hour](docs/screenshots/impressions-by-hour.jpg)
 
@@ -206,7 +213,10 @@ Then open your browser to `http://localhost:8080`
 
 - **Time-series tracking** — Most analytics tools only show current stats. CypherPulse tracks how engagement evolves over days.
 - **Post type analysis** — Understand whether tweets, replies, or retweets perform better for your account.
-- **Timing optimization** — Data-driven insights on when your audience is most engaged.
+- **Timing optimization** — Hour×day heatmap shows exactly when your audience is most engaged, split by post type.
+- **Language intelligence** — Word bubble chart surfaces which words, bigrams, and trigrams correlate with high impressions using IDF-weighted scoring.
+- **Benchmark comparison** — Fetch up to 5,000 tweets from any public account and compare their word patterns against yours side-by-side.
+- **Impression decay** — See whether your content has long-tail reach or peaks and dies in 24 hours.
 
 ## 📋 How It Works
 
