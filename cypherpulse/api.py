@@ -12,14 +12,24 @@ from typing import Dict, List, Any, Optional, Union
 # Load .env early so TWITTER_API_KEY is available to the API server
 try:
     from dotenv import load_dotenv as _load_dotenv
-    for _env_candidate in [
-        Path(__file__).resolve().parent.parent / ".env",
-        Path.cwd() / ".env",
-        Path.cwd().parent / ".env",
-    ]:
+    _env_search = [
+        Path(__file__).resolve().parent.parent / ".env",   # worktree root
+        Path.cwd() / ".env",                               # cwd
+        Path.cwd().parent / ".env",                        # cwd parent
+        Path.home() / ".cypherpulse" / ".env",            # ~/.cypherpulse/.env
+        Path.home() / "projects" / "cypherpulse" / ".env", # ~/projects/cypherpulse/.env
+    ]
+    _loaded = False
+    for _env_candidate in _env_search:
         if _env_candidate.exists():
-            _load_dotenv(_env_candidate)
+            _load_dotenv(_env_candidate, override=False)
+            _loaded = True
             break
+    if not _loaded:
+        # Try all candidates without breaking — load all that exist
+        for _env_candidate in _env_search:
+            if _env_candidate.exists():
+                _load_dotenv(_env_candidate, override=False)
 except ImportError:
     pass
 
