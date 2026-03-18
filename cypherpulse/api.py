@@ -233,16 +233,30 @@ async def api_word_bubbles(
 
 # ─── Benchmark helpers ────────────────────────────────────────────────────────
 
-_TWITTERAPI_SECRET_PATH = Path("/root/.openclaw/secrets/twitterapi-io.json")
+_TWITTERAPI_SECRET_PATH = Path(
+    os.getenv("TWITTERAPI_SECRET_PATH", "/root/.openclaw/secrets/twitterapi-io.json")
+)
 
 def _load_twitterapi_key() -> str:
-    """Load twitterapi.io API key from secrets file (server-side only)."""
+    """Load twitterapi.io API key.
+
+    Priority order:
+    1. TWITTERAPI_IO_KEY environment variable
+    2. TWITTER_API_KEY environment variable (same key, set in .env during install)
+    3. Secrets JSON file at TWITTERAPI_SECRET_PATH
+    """
+    # 1. Explicit env var
+    key = os.getenv("TWITTERAPI_IO_KEY") or os.getenv("TWITTER_API_KEY")
+    if key:
+        return key
+    # 2. Secrets file (server-side path)
     try:
         with open(_TWITTERAPI_SECRET_PATH) as f:
             return json.load(f)["api_key"]
-    except Exception as e:
-        logger.error(f"Failed to load twitterapi.io key: {e}")
-        return ""
+    except Exception:
+        pass
+    logger.error("twitterapi.io key not found — set TWITTER_API_KEY in .env or TWITTERAPI_IO_KEY env var")
+    return ""
 
 
 async def fetch_handle_tweets(handle: str, api_key: str) -> List[Dict[str, Any]]:
