@@ -301,7 +301,8 @@
     <script>
         // OS Detection
         function detectOS() {
-            const platform = navigator.platform.toLowerCase();
+            // navigator.platform is deprecated; prefer userAgentData with fallback
+            const platform = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
             const userAgent = navigator.userAgent.toLowerCase();
             
             if (platform.includes('win') || userAgent.includes('windows')) {
@@ -464,6 +465,8 @@
             document.body.appendChild(textarea);
             textarea.select();
             try {
+                // Legacy fallback: document.execCommand is deprecated but provides
+                // clipboard access in browsers that don't support navigator.clipboard.
                 document.execCommand('copy');
                 btn.textContent = 'Copied!';
                 btn.classList.add('copied');
@@ -490,8 +493,8 @@
             icon.classList.toggle('open');
         }
         
-        // Initialize on page load
-        window.onload = function() {
+        // Initialize as soon as DOM is ready (faster than window.onload which waits for images/stylesheets)
+        document.addEventListener('DOMContentLoaded', function() {
             const os = detectOS();
             displayInstallCommand(os);
             displayPythonInstructions(os);

@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 # Single source of truth for version — always read from __init__.py
-def get_version():
+def get_version() -> str:
     import re
     with open("cypherpulse/__init__.py") as f:
         match = re.search(r'^__version__ = ["\']([^"\']+)["\']', f.read(), re.M)

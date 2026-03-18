@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+    <meta name="description" content="CypherPulse - Open-source X/Twitter analytics dashboard for tracking tweet performance, engagement trends, and word patterns.">
+    <meta property="og:title" content="CypherPulse - X/Twitter Analytics">
+    <meta property="og:description" content="Open-source X/Twitter analytics dashboard for tracking tweet performance, engagement trends, and word patterns.">
+    <meta property="og:type" content="website">
     <title>CypherPulse - X/Twitter Analytics</title>
     <style>
         * {
@@ -601,8 +605,7 @@
                     <label style="color:#94a3b8;font-size:0.875rem;">Min. tweets:
                         <input type="number" id="wordBubbleMinTweets" value="2" min="2" max="20"
                             style="width:60px;margin-left:6px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
-                                   color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:0.875rem;"
-                            onchange="reloadWordBubbles(); if(_benchmarkHandle && _cachedBenchmarkTweets) _rescoreBenchmark();">
+                                   color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:0.875rem;">
                         <span id="minTweetsNote" style="margin-left:6px;font-size:0.75rem;color:#64748b;">(pairs require ≥ 2)</span>
                     </label>
                 </div>
@@ -2086,6 +2089,12 @@
 
         // Initialize on load
         init();
+
+        // Attach minTweets change handler via addEventListener (avoids inline onchange)
+        document.getElementById('wordBubbleMinTweets').addEventListener('change', function() {
+            reloadWordBubbles();
+            if (_benchmarkHandle && _cachedBenchmarkTweets) _rescoreBenchmark();
+        });
 
         // Auto-refresh every 5 minutes
         setInterval(() => reloadAll(), 5 * 60 * 1000);

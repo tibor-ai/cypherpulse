@@ -56,18 +56,16 @@ def _validate_db_path(path_str: str) -> Path:
         ValueError: If path contains traversal patterns or is unsafe
     """
     path = Path(path_str).resolve()
-    
-    # Check for path traversal patterns
-    if ".." in path.parts:
-        raise ValueError("Database path contains path traversal patterns (..)")
-    
-    # Ensure path is within user's home directory or current working directory
+
+    # Path.resolve() already eliminates any '..' components; checking them in resolved
+    # parts is redundant. The is_relative_to() check below is the real security boundary.
+    # Note: symlinks within the permitted directories are allowed by design.
     home = Path.home().resolve()
     cwd = Path.cwd().resolve()
-    
+
     if not (path.is_relative_to(home) or path.is_relative_to(cwd)):
-        raise ValueError(f"Database path must be within home directory or working directory")
-    
+        raise ValueError("Database path must be within home directory or working directory")
+
     return path
 
 
@@ -144,7 +142,16 @@ def _date_filter_sql(
 
     Returns:
         Tuple of (fragment, params) ready to embed in a WHERE clause with AND.
+
+    Raises:
+        ValueError: If from_date or to_date don't match YYYY-MM-DD format.
     """
+    _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    if from_date and not _DATE_RE.match(from_date):
+        raise ValueError(f"Invalid from_date format '{from_date}': expected YYYY-MM-DD")
+    if to_date and not _DATE_RE.match(to_date):
+        raise ValueError(f"Invalid to_date format '{to_date}': expected YYYY-MM-DD")
+
     if from_date and to_date:
         return f"date({col}) >= ? AND date({col}) <= ?", (from_date, to_date)
     elif from_date:
@@ -584,7 +591,7 @@ def get_word_bubbles(
 
         # Bigram extraction: adjacent pairs, no stopwords, no hashtags
         # (ordered_tokens already excludes stopwords and hashtags)
-        seen_bigrams: set = set()
+        seen_bigrams: set[str] = set()
         for i in range(len(ordered_tokens) - 1):
             a, b = ordered_tokens[i], ordered_tokens[i + 1]
             bigram = f"{a} {b}"
@@ -596,7 +603,7 @@ def get_word_bubbles(
                 bigram_data[bigram]['imp_sum'] += impressions
 
         # Trigram extraction: adjacent triplets, no stopwords, no hashtags
-        seen_trigrams: set = set()
+        seen_trigrams: set[str] = set()
         for i in range(len(ordered_tokens) - 2):
             a, b, c = ordered_tokens[i], ordered_tokens[i + 1], ordered_tokens[i + 2]
             trigram = f"{a} {b} {c}"

@@ -18,6 +18,15 @@ msg "  CypherPulse Installer"
 msg "=================================================="
 msg ""
 
+# ---------- admin check ----------
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator
+)
+if (-not $isAdmin) {
+    warn "Not running as Administrator. Some steps (system-wide Python install, PATH updates) may fail."
+    warn "Re-run in an elevated PowerShell prompt if you encounter errors."
+}
+
 # ---------- install location ----------
 $input = Read-Host "Install directory [default: $DefaultDir]"
 $InstallDir = if ($input.Trim() -ne "") { $input.Trim() } else { $DefaultDir }

@@ -39,6 +39,14 @@ msg "=================================================="
 msg ""
 
 # ---------- detect OS ----------
+# $OSTYPE may be empty in minimal containers or non-interactive bash; fall back to uname
+if [ -z "${OSTYPE:-}" ]; then
+    case "$(uname -s)" in
+        Linux*)  OSTYPE="linux-gnu" ;;
+        Darwin*) OSTYPE="darwin" ;;
+        *)       OSTYPE="unknown" ;;
+    esac
+fi
 case "$OSTYPE" in
     linux-gnu*) OS="linux" ;;
     darwin*)    OS="macos" ;;
@@ -68,6 +76,9 @@ if python_version_ok; then
 else
     warn "Python 3.9+ not found. Installing..."
     if [ "$OS" = "linux" ]; then
+        if ! command -v sudo >/dev/null 2>&1; then
+            die "sudo not found. Run as root or install sudo first."
+        fi
         sudo apt-get update -qq
         sudo apt-get install -y python3 python3-pip python3-venv
     else

@@ -318,8 +318,8 @@ async def fetch_handle_tweets(handle: str, api_key: str, max_tweets: int = 200) 
             resp = await client.get(url, params=params, headers=headers)
             if resp.status_code == 200:
                 return resp.json()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("fetch_page failed (cursor=%s): %s", cursor, exc)
         return {}
 
     try:
