@@ -1033,14 +1033,19 @@
 
             if (!data || data.length === 0) {
                 if (data !== null) {
-                    // data is [] — show message, hide benchmark panel
-                    _showBenchmarkMsg(`No data found for @${handle}`);
+                    const minTweets = parseInt(document.getElementById('wordBubbleMinTweets').value) || 2;
+                    const suggestion = minTweets > 2
+                        ? ` Try lowering "Min. tweets" to ${Math.max(2, minTweets - 1)}.`
+                        : '';
+                    _showBenchmarkMsg(`No data found for @${handle}.${suggestion}`);
                 }
                 outer.style.display = 'none';
                 yourTitle.style.display = 'none';
                 return;
             }
 
+            // Data found — clear any previous error message
+            _showBenchmarkMsg('');
             benchTitle.textContent = `@${handle}`;
             outer.style.display = '';
             yourTitle.style.display = '';
