@@ -446,7 +446,8 @@ def _score_tweets(
             pmi = math.log(pab / (pa * pb)) if pa > 0 and pb > 0 else 0.0
             pmi_weight = max(0.1, pmi)
             idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
-            score = round(avg_eng * idf * pmi_weight, 2)
+            confidence = min(count / 5.0, 1.0)
+            score = round(avg_eng * idf * pmi_weight * confidence, 2)
             results.append({
                 'word': bigram,
                 'count': count,

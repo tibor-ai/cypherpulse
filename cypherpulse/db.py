@@ -632,7 +632,11 @@ def get_word_bubbles(
 
             pmi_weight = max(0.1, pmi)
             idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
-            score = round(avg_imp * idf * pmi_weight, 2)
+            # Confidence discount: single-tweet bigrams are unreliable.
+            # Reaches full confidence at 5+ tweets. Prevents one viral tweet
+            # from flooding the top with all its word pairs.
+            confidence = min(count / 5.0, 1.0)
+            score = round(avg_imp * idf * pmi_weight * confidence, 2)
 
             results.append({
                 'word': bigram,
