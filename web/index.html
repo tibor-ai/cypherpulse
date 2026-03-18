@@ -540,6 +540,75 @@
                 </div>
             </div>
 
+            <!-- Word Bubble Chart -->
+            <div class="section">
+                <h2>☁️ Word Bubble Chart</h2>
+                <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">Words sized by average 24h impressions — based on tweet text in the selected date range</p>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                    <div>
+                        <button class="tf-btn active" onclick="setWordBubbleMode('words',this)" aria-label="Show single words">Words</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('pairs',this)" aria-label="Show word pairs (PMI bigrams)">Bigrams</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('trigrams',this)" aria-label="Show word trigrams (PMI trigrams)">Trigrams</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('all',this)" aria-label="Show words, pairs, and trigrams together">All</button>
+                    </div>
+                    <label style="color:#94a3b8;font-size:0.875rem;">Min. tweets:
+                        <input type="number" id="wordBubbleMinTweets" value="2" min="2" max="20"
+                            style="width:60px;margin-left:6px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                                   color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:0.875rem;"
+                            onchange="reloadWordBubbles(); if(_benchmarkHandle && _cachedBenchmarkTweets) _rescoreBenchmark();">
+                        <span id="minTweetsNote" style="margin-left:6px;font-size:0.75rem;color:#64748b;">(pairs require ≥ 2)</span>
+                    </label>
+                </div>
+
+                <!-- Benchmark input -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                    <span style="color:#94a3b8;font-size:0.875rem;">@</span>
+                    <input type="text" id="benchmarkHandle" placeholder="e.g. levelsio" maxlength="50"
+                        style="flex:1;min-width:140px;max-width:260px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                               color:#e2e8f0;border-radius:6px;padding:5px 10px;font-size:0.875rem;"
+                        onkeydown="if(event.key==='Enter')runBenchmark()">
+                    <label style="color:#94a3b8;font-size:0.875rem;white-space:nowrap;">
+                        Tweets:
+                        <select id="benchmarkMaxTweets"
+                            style="margin-left:4px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                                   color:#e2e8f0;border-radius:6px;padding:4px 6px;font-size:0.875rem;">
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200" selected>200</option>
+                            <option value="500">500</option>
+                            <option value="1000">1,000</option>
+                            <option value="5000">5,000</option>
+                        </select>
+                    </label>
+                    <button id="benchmarkBtn" class="tf-btn" onclick="runBenchmark()"
+                        style="background:rgba(59,130,246,0.2);border-color:rgba(59,130,246,0.5);">Compare</button>
+                    <button class="tf-btn" onclick="clearBenchmark()">Clear</button>
+                </div>
+                <div id="benchmarkMsg" style="font-size:0.8rem;color:#f87171;margin-bottom:8px;display:none;"></div>
+
+                <!-- Chart area: single or dual side-by-side -->
+                <div id="wordBubbleChartsWrapper" style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <div id="wordBubbleChartOuter" style="flex:1;min-width:260px;">
+                        <h3 id="wordBubbleYourTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;display:none;">Your tweets</h3>
+                        <div id="wordBubbleChart"></div>
+                        <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('own')">⬇ Download CSV</button>
+                            <button class="tf-btn" style="font-size:0.8rem;" id="copyOwnBtn" onclick="copyWordBubbleCSV('own')">⎘ Copy</button>
+                        </div>
+                    </div>
+                    <div id="wordBubbleBenchmarkOuter" style="flex:1;min-width:260px;display:none;">
+                        <h3 id="wordBubbleBenchmarkTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;"></h3>
+                        <div id="wordBubbleChartBenchmark"></div>
+                        <div id="wordBubbleChartBenchmarkLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('benchmark')">⬇ Download CSV</button>
+                            <button class="tf-btn" style="font-size:0.8rem;" id="copyBenchmarkBtn" onclick="copyWordBubbleCSV('benchmark')">⎘ Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Global Date Range Bar -->
             <div class="global-range-bar" id="globalRangeBar">
                 <span class="global-range-label">Tweet date range:</span>
@@ -632,75 +701,6 @@
                 </div>
                 <div id="heatmapChart" class="chart-container" aria-label="Hour by day heatmap of impressions"></div>
                 <p class="heatmap-note">Times in UTC</p>
-            </div>
-
-            <!-- Word Bubble Chart -->
-            <div class="section">
-                <h2>☁️ Word Bubble Chart</h2>
-                <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">Words sized by average 24h impressions — based on tweet text in the selected date range</p>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-                    <div>
-                        <button class="tf-btn active" onclick="setWordBubbleMode('words',this)" aria-label="Show single words">Words</button>
-                        <button class="tf-btn" onclick="setWordBubbleMode('pairs',this)" aria-label="Show word pairs (PMI bigrams)">Bigrams</button>
-                        <button class="tf-btn" onclick="setWordBubbleMode('trigrams',this)" aria-label="Show word trigrams (PMI trigrams)">Trigrams</button>
-                        <button class="tf-btn" onclick="setWordBubbleMode('all',this)" aria-label="Show words, pairs, and trigrams together">All</button>
-                    </div>
-                    <label style="color:#94a3b8;font-size:0.875rem;">Min. tweets:
-                        <input type="number" id="wordBubbleMinTweets" value="2" min="2" max="20"
-                            style="width:60px;margin-left:6px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
-                                   color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:0.875rem;"
-                            onchange="reloadWordBubbles(); if(_benchmarkHandle && _cachedBenchmarkTweets) _rescoreBenchmark();">
-                        <span id="minTweetsNote" style="margin-left:6px;font-size:0.75rem;color:#64748b;">(pairs require ≥ 2)</span>
-                    </label>
-                </div>
-
-                <!-- Benchmark input -->
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                    <span style="color:#94a3b8;font-size:0.875rem;">@</span>
-                    <input type="text" id="benchmarkHandle" placeholder="e.g. levelsio" maxlength="50"
-                        style="flex:1;min-width:140px;max-width:260px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
-                               color:#e2e8f0;border-radius:6px;padding:5px 10px;font-size:0.875rem;"
-                        onkeydown="if(event.key==='Enter')runBenchmark()">
-                    <label style="color:#94a3b8;font-size:0.875rem;white-space:nowrap;">
-                        Tweets:
-                        <select id="benchmarkMaxTweets"
-                            style="margin-left:4px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
-                                   color:#e2e8f0;border-radius:6px;padding:4px 6px;font-size:0.875rem;">
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                            <option value="200" selected>200</option>
-                            <option value="500">500</option>
-                            <option value="1000">1,000</option>
-                            <option value="5000">5,000</option>
-                        </select>
-                    </label>
-                    <button id="benchmarkBtn" class="tf-btn" onclick="runBenchmark()"
-                        style="background:rgba(59,130,246,0.2);border-color:rgba(59,130,246,0.5);">Compare</button>
-                    <button class="tf-btn" onclick="clearBenchmark()">Clear</button>
-                </div>
-                <div id="benchmarkMsg" style="font-size:0.8rem;color:#f87171;margin-bottom:8px;display:none;"></div>
-
-                <!-- Chart area: single or dual side-by-side -->
-                <div id="wordBubbleChartsWrapper" style="display:flex;gap:16px;flex-wrap:wrap;">
-                    <div id="wordBubbleChartOuter" style="flex:1;min-width:260px;">
-                        <h3 id="wordBubbleYourTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;display:none;">Your tweets</h3>
-                        <div id="wordBubbleChart"></div>
-                        <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
-                        <div style="display:flex;gap:8px;margin-top:10px;">
-                            <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('own')">⬇ Download CSV</button>
-                            <button class="tf-btn" style="font-size:0.8rem;" id="copyOwnBtn" onclick="copyWordBubbleCSV('own')">⎘ Copy</button>
-                        </div>
-                    </div>
-                    <div id="wordBubbleBenchmarkOuter" style="flex:1;min-width:260px;display:none;">
-                        <h3 id="wordBubbleBenchmarkTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;"></h3>
-                        <div id="wordBubbleChartBenchmark"></div>
-                        <div id="wordBubbleChartBenchmarkLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
-                        <div style="display:flex;gap:8px;margin-top:10px;">
-                            <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('benchmark')">⬇ Download CSV</button>
-                            <button class="tf-btn" style="font-size:0.8rem;" id="copyBenchmarkBtn" onclick="copyWordBubbleCSV('benchmark')">⎘ Copy</button>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Top Posts -->
