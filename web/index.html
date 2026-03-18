@@ -672,11 +672,13 @@
                         <h3 id="wordBubbleYourTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;display:none;">Your tweets</h3>
                         <div id="wordBubbleChart"></div>
                         <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                        <button class="tf-btn" style="margin-top:10px;font-size:0.8rem;" onclick="downloadWordBubbleCSV('own')">⬇ Download CSV</button>
                     </div>
                     <div id="wordBubbleBenchmarkOuter" style="flex:1;min-width:260px;display:none;">
                         <h3 id="wordBubbleBenchmarkTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;"></h3>
                         <div id="wordBubbleChartBenchmark"></div>
                         <div id="wordBubbleChartBenchmarkLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                        <button class="tf-btn" style="margin-top:10px;font-size:0.8rem;" onclick="downloadWordBubbleCSV('benchmark')">⬇ Download CSV</button>
                     </div>
                 </div>
             </div>
@@ -873,6 +875,7 @@
             const params = [qp, `min_tweets=${minTweets}`, 'top_n=50', `mode=${_wordBubbleMode}`].filter(Boolean).join('&');
             try {
                 const data = await fetch(`/api/word-bubbles?${params}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                _lastOwnWords = data || [];
                 renderWordBubbles(data, 'wordBubbleChart');
                 // Rescore benchmark from cache — no re-fetch on control changes
                 if (_benchmarkHandle && _cachedBenchmarkTweets) {
@@ -884,7 +887,37 @@
         // ─── Benchmark ────────────────────────────────────────────────────────
 
         let _benchmarkHandle = '';
-        let _cachedBenchmarkTweets = null;  // raw tweet objects from last fetch
+        let _cachedBenchmarkTweets = null;   // raw tweet objects from last fetch
+        let _lastOwnWords = [];              // last scored words for own chart
+        let _lastBenchmarkWords = [];        // last scored words for benchmark chart
+
+        function downloadWordBubbleCSV(which) {
+            const words = which === 'benchmark' ? _lastBenchmarkWords : _lastOwnWords;
+            const label = which === 'benchmark' ? (_benchmarkHandle || 'benchmark') : 'your_tweets';
+            if (!words || words.length === 0) {
+                alert('No data to download yet.');
+                return;
+            }
+            const header = 'word,count,avg_impressions,score,is_hashtag,is_bigram';
+            const rows = words.map(w =>
+                [
+                    `"${(w.word || '').replace(/"/g, '""')}"`,
+                    w.count || 0,
+                    w.avg_impressions || 0,
+                    w.score || 0,
+                    w.is_hashtag ? 'true' : 'false',
+                    w.is_bigram ? 'true' : 'false',
+                ].join(',')
+            );
+            const csv = [header, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cypherpulse_words_${label}_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
 
         async function _rescoreBenchmark() {
             if (!_cachedBenchmarkTweets || !_benchmarkHandle) return;
@@ -963,6 +996,7 @@
             benchTitle.textContent = `@${handle}`;
             outer.style.display = '';
             yourTitle.style.display = '';
+            _lastBenchmarkWords = data || [];
             renderWordBubbles(data, 'wordBubbleChartBenchmark');
         }
 
