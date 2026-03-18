@@ -638,8 +638,33 @@
                             onchange="reloadWordBubbles()">
                     </label>
                 </div>
-                <div id="wordBubbleChart"></div>
-                <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+
+                <!-- Benchmark input -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                    <span style="color:#94a3b8;font-size:0.875rem;">@</span>
+                    <input type="text" id="benchmarkHandle" placeholder="e.g. levelsio" maxlength="50"
+                        style="flex:1;min-width:140px;max-width:260px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                               color:#e2e8f0;border-radius:6px;padding:5px 10px;font-size:0.875rem;"
+                        onkeydown="if(event.key==='Enter')runBenchmark()">
+                    <button id="benchmarkBtn" class="tf-btn" onclick="runBenchmark()"
+                        style="background:rgba(59,130,246,0.2);border-color:rgba(59,130,246,0.5);">Compare</button>
+                    <button class="tf-btn" onclick="clearBenchmark()">Clear</button>
+                </div>
+                <div id="benchmarkMsg" style="font-size:0.8rem;color:#f87171;margin-bottom:8px;display:none;"></div>
+
+                <!-- Chart area: single or dual side-by-side -->
+                <div id="wordBubbleChartsWrapper" style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <div id="wordBubbleChartOuter" style="flex:1;min-width:260px;">
+                        <h3 id="wordBubbleYourTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;display:none;">Your tweets</h3>
+                        <div id="wordBubbleChart"></div>
+                        <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                    </div>
+                    <div id="wordBubbleBenchmarkOuter" style="flex:1;min-width:260px;display:none;">
+                        <h3 id="wordBubbleBenchmarkTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;"></h3>
+                        <div id="wordBubbleChartBenchmark"></div>
+                        <div id="wordBubbleChartBenchmarkLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Top Posts -->
@@ -828,8 +853,79 @@
             const params = [qp, `min_tweets=${minTweets}`, 'top_n=50', `mode=${_wordBubbleMode}`].filter(Boolean).join('&');
             try {
                 const data = await fetch(`/api/word-bubbles?${params}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
-                renderWordBubbles(data);
+                renderWordBubbles(data, 'wordBubbleChart');
+                // Re-run benchmark if one is active (mode may have changed)
+                if (_benchmarkHandle) { _renderBenchmarkData(null); runBenchmark(); }
             } catch(e) { console.error('reloadWordBubbles failed', e); }
+        }
+
+        // ─── Benchmark ────────────────────────────────────────────────────────
+
+        let _benchmarkHandle = '';
+
+        async function runBenchmark() {
+            const raw = document.getElementById('benchmarkHandle').value.trim().replace(/^@/, '');
+            if (!raw) return;
+            if (!/^[A-Za-z0-9_]{1,50}$/.test(raw)) {
+                _showBenchmarkMsg('Invalid handle — alphanumeric and underscore only.');
+                return;
+            }
+            _benchmarkHandle = raw;
+
+            const btn = document.getElementById('benchmarkBtn');
+            btn.textContent = 'Loading…';
+            btn.disabled = true;
+            _showBenchmarkMsg('');
+
+            try {
+                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=1`;
+                const data = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(20000) }).then(r => r.json());
+                _renderBenchmarkData(data, raw);
+            } catch(e) {
+                console.error('runBenchmark failed', e);
+                _showBenchmarkMsg('Failed to fetch benchmark data.');
+                _renderBenchmarkData([], raw);
+            } finally {
+                btn.textContent = 'Compare';
+                btn.disabled = false;
+            }
+        }
+
+        function _renderBenchmarkData(data, handle) {
+            handle = handle || _benchmarkHandle;
+            const outer = document.getElementById('wordBubbleBenchmarkOuter');
+            const yourTitle = document.getElementById('wordBubbleYourTitle');
+            const benchTitle = document.getElementById('wordBubbleBenchmarkTitle');
+            const msgEl = document.getElementById('benchmarkMsg');
+
+            if (!data || data.length === 0) {
+                if (data !== null) {
+                    // data is [] — show message, hide benchmark panel
+                    _showBenchmarkMsg(`No data found for @${handle}`);
+                }
+                outer.style.display = 'none';
+                yourTitle.style.display = 'none';
+                return;
+            }
+
+            benchTitle.textContent = `@${handle}`;
+            outer.style.display = '';
+            yourTitle.style.display = '';
+            renderWordBubbles(data, 'wordBubbleChartBenchmark');
+        }
+
+        function clearBenchmark() {
+            _benchmarkHandle = '';
+            document.getElementById('benchmarkHandle').value = '';
+            document.getElementById('wordBubbleBenchmarkOuter').style.display = 'none';
+            document.getElementById('wordBubbleYourTitle').style.display = 'none';
+            _showBenchmarkMsg('');
+        }
+
+        function _showBenchmarkMsg(msg) {
+            const el = document.getElementById('benchmarkMsg');
+            if (msg) { el.textContent = msg; el.style.display = ''; }
+            else { el.textContent = ''; el.style.display = 'none'; }
         }
 
         function wordBubbleBlueColor(value, minVal, maxVal) {
@@ -843,9 +939,11 @@
             return `rgb(${r},${g},${b})`;
         }
 
-        function renderWordBubbles(words) {
-            const el = document.getElementById('wordBubbleChart');
-            const legendEl = document.getElementById('wordBubbleLegend');
+        function renderWordBubbles(words, containerId) {
+            containerId = containerId || 'wordBubbleChart';
+            const legendId = containerId === 'wordBubbleChart' ? 'wordBubbleLegend' : containerId + 'Legend';
+            const el = document.getElementById(containerId);
+            const legendEl = document.getElementById(legendId);
 
             if (!words || words.length === 0) {
                 el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No word data yet — tweets need text content and snapshots.</p>';
