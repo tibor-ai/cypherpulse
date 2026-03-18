@@ -537,7 +537,7 @@ async def api_benchmark(
     mode: str = Query(default='words', description="Mode: 'words', 'pairs', 'both'"),
     top_n: int = Query(default=50, ge=1, le=200),
     min_tweets: int = Query(default=1, ge=1, le=100),
-    max_tweets: int = Query(default=200, ge=50, le=1000, description="Max tweets to fetch"),
+    max_tweets: int = Query(default=200, ge=50, le=5000, description="Max tweets to fetch"),
 ) -> JSONResponse:
     """Fetch top 40 tweets from a handle and return word bubble data.
 
