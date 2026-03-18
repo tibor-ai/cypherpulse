@@ -928,8 +928,10 @@
         }
 
         function copyWordBubbleCSV(which) {
-            const csv = _buildCSV(which);
-            if (!csv) { alert('No data to copy yet.'); return; }
+            const words = which === 'benchmark' ? _lastBenchmarkWords : _lastOwnWords;
+            if (!words || words.length === 0) { alert('No data to copy yet.'); return; }
+            // Copy words only — one per line, no numbers
+            const csv = words.map(w => w.word || '').filter(Boolean).join('\n');
             const btnId = which === 'benchmark' ? 'copyBenchmarkBtn' : 'copyOwnBtn';
             const btn = document.getElementById(btnId);
             navigator.clipboard.writeText(csv).then(() => {
