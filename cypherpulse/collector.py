@@ -6,7 +6,7 @@ import sqlite3
 import re
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
-from .db import get_db
+from .db import get_db, get_db_context
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -215,39 +215,37 @@ def scan_tweets(username: str, api_key: str, db_path: Optional[str] = None) -> i
         return 0
     
     try:
-        conn = get_db(db_path)
-        
-        # Get existing tweet IDs
-        existing = {
-            r[0] for r in conn.execute("SELECT tweet_id FROM tweet_performance").fetchall()
-        }
-        
-        new_count = 0
-        
-        for tweet in tweets:
-            tweet_id = str(tweet.get("id", ""))
+        with get_db_context(db_path) as conn:
+            # Get existing tweet IDs
+            existing = {
+                r[0] for r in conn.execute("SELECT tweet_id FROM tweet_performance").fetchall()
+            }
             
-            if not tweet_id or tweet_id in existing:
-                continue
+            new_count = 0
             
-            post_type = detect_post_type(tweet)
-            text = tweet.get("text", "")[:280]
-            created_at = parse_twitter_date(tweet.get("createdAt", ""))
+            for tweet in tweets:
+                tweet_id = str(tweet.get("id", ""))
+                
+                if not tweet_id or tweet_id in existing:
+                    continue
+                
+                post_type = detect_post_type(tweet)
+                text = tweet.get("text", "")[:280]
+                created_at = parse_twitter_date(tweet.get("createdAt", ""))
+                
+                conn.execute("""
+                    INSERT OR IGNORE INTO tweet_performance 
+                    (tweet_id, post_type, posted_at, tweet_text)
+                    VALUES (?, ?, ?, ?)
+                """, (tweet_id, post_type, created_at, text))
+                
+                new_count += 1
+                logger.info(f"  + [{post_type}] {tweet_id} — {text[:60]}")
             
-            conn.execute("""
-                INSERT OR IGNORE INTO tweet_performance 
-                (tweet_id, post_type, posted_at, tweet_text)
-                VALUES (?, ?, ?, ?)
-            """, (tweet_id, post_type, created_at, text))
+            conn.commit()
             
-            new_count += 1
-            logger.info(f"  + [{post_type}] {tweet_id} — {text[:60]}")
-        
-        conn.commit()
-        conn.close()
-        
-        logger.info(f"Registered {new_count} new tweets")
-        return new_count
+            logger.info(f"Registered {new_count} new tweets")
+            return new_count
     except sqlite3.Error as e:
         logger.error(f"Database error during tweet scan: {e}")
         raise
@@ -327,25 +325,24 @@ def collect_snapshots(api_key: str, db_path: Optional[str] = None) -> int:
     logger.info("Collecting metric snapshots...")
     
     try:
-        conn = get_db(db_path)
-        now = datetime.now(timezone.utc)
-        
-        # Get recent tweets
-        rows = conn.execute("""
-            SELECT tweet_id, post_type, posted_at 
-            FROM tweet_performance
-            ORDER BY posted_at DESC LIMIT 500
-        """).fetchall()
-        
-        updated = 0
-        for row in rows:
-            updated += _collect_snapshot_for_tweet(conn, row, api_key, now)
-        
-        conn.commit()
-        conn.close()
-        
-        logger.info(f"Collected {updated} snapshots")
-        return updated
+        with get_db_context(db_path) as conn:
+            now = datetime.now(timezone.utc)
+            
+            # Get recent tweets
+            rows = conn.execute("""
+                SELECT tweet_id, post_type, posted_at 
+                FROM tweet_performance
+                ORDER BY posted_at DESC LIMIT 500
+            """).fetchall()
+            
+            updated = 0
+            for row in rows:
+                updated += _collect_snapshot_for_tweet(conn, row, api_key, now)
+            
+            conn.commit()
+            
+            logger.info(f"Collected {updated} snapshots")
+            return updated
     except sqlite3.Error as e:
         logger.error(f"Database error during snapshot collection: {e}")
         raise

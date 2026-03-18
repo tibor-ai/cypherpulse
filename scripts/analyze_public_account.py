@@ -44,7 +44,7 @@ def analyze(handle: str, tweets: list) -> dict:
             by_hour[h]["likes"] += likes
             by_hour[h]["rts"] += rts
             by_hour[h]["replies"] += replies
-        except:
+        except ValueError:
             pass
 
     n = len(tweets)
