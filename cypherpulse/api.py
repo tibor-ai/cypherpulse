@@ -433,10 +433,11 @@ def _score_tweets(
         return results
 
     def _build_bigram_results() -> List[Dict[str, Any]]:
+        bigram_min = max(min_tweets, 2)  # bigrams must appear in 2+ tweets minimum
         results = []
         for bigram, data in bigram_data.items():
             count = len(data['tweets'])
-            if count < min_tweets:
+            if count < bigram_min:
                 continue
             avg_eng = _avg_engagement(data['tweets'])
             a, b = bigram.split(' ', 1)
