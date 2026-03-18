@@ -524,7 +524,12 @@ async def api_benchmark(
     if not tweets:
         return JSONResponse([])
 
-    data = _score_tweets(tweets, mode=mode, min_tweets=min_tweets, top_n=top_n)
+    try:
+        data = _score_tweets(tweets, mode=mode, min_tweets=min_tweets, top_n=top_n)
+    except Exception as e:
+        logger.error(f"_score_tweets failed for @{clean_handle}: {e}", exc_info=True)
+        data = []
+    logger.info(f"Benchmark @{clean_handle}: {len(tweets)} tweets → {len(data)} words (mode={mode})")
     return JSONResponse(data)
 
 
