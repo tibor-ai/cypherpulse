@@ -3,9 +3,18 @@ from setuptools import setup, find_packages
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+# Single source of truth for version — always read from __init__.py
+def get_version():
+    import re
+    with open("cypherpulse/__init__.py") as f:
+        match = re.search(r'^__version__ = ["\']([^"\']+)["\']', f.read(), re.M)
+        if match:
+            return match.group(1)
+    raise RuntimeError("Cannot find version in cypherpulse/__init__.py")
+
 setup(
     name="cypherpulse",
-    version="0.1.0",
+    version=get_version(),
     author="CypherPulse Contributors",
     description="Open-source X/Twitter analytics dashboard",
     long_description=long_description,

@@ -634,7 +634,7 @@
         <div class="cp-tooltip" id="cpTooltip"></div>
 
         <footer>
-            <p>CypherPulse v0.1.0 • Open Source Twitter Analytics</p>
+            <p>CypherPulse <span id="appVersion">v0.2.0</span> • Open Source Twitter Analytics</p>
         </footer>
     </div>
 
@@ -853,6 +853,10 @@
             document.getElementById('totalTweets').textContent = stats.total_tweets.toLocaleString();
             document.getElementById('totalSnapshots').textContent = stats.total_snapshots.toLocaleString();
             document.getElementById('avgImpressions').textContent = Math.round(stats.avg_impressions_24h).toLocaleString();
+            if (stats.version) {
+                const el = document.getElementById('appVersion');
+                if (el) el.textContent = 'v' + stats.version;
+            }
         }
 
         // ═══════════════════════════════════════════════

@@ -19,12 +19,13 @@ from .db import (
     get_decay_curve,
     get_heatmap,
 )
+from . import __version__
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="CypherPulse API", version="0.1.0")
+app = FastAPI(title="CypherPulse API", version=__version__)
 
 # CORS configuration - read from environment variable
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
@@ -49,7 +50,7 @@ async def root() -> Union[FileResponse, Dict[str, str]]:
     if index_file.exists():
         return FileResponse(index_file)
     logger.warning(f"Dashboard index.html not found at {index_file}, falling back to API response")
-    return {"message": "CypherPulse API", "version": "0.1.0"}
+    return {"message": "CypherPulse API", "version": __version__}
 
 
 @app.get("/api/stats")
@@ -60,7 +61,9 @@ async def api_stats(
 ) -> JSONResponse:
     """Get summary statistics."""
     try:
-        return JSONResponse(get_stats(days=days, from_date=from_date, to_date=to_date))
+        stats = get_stats(days=days, from_date=from_date, to_date=to_date)
+        stats["version"] = __version__
+        return JSONResponse(stats)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch statistics")
