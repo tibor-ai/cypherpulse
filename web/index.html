@@ -920,7 +920,8 @@
             _showBenchmarkMsg('');
 
             try {
-                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=1&max_tweets=${maxTweets}&return_tweets=1`;
+                const minTweets = parseInt(document.getElementById('wordBubbleMinTweets').value) || 2;
+                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=${minTweets}&max_tweets=${maxTweets}&return_tweets=1`;
                 const timeoutMs = Math.max(30000, maxTweets * 150);
                 const resp = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json());
                 // Cache raw tweets for instant rescore on control changes
