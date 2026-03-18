@@ -267,40 +267,37 @@
             font-size: 0.875rem;
         }
 
-        /* Time Range Selector */
-        .time-range-bar {
+        /* Per-section time range controls */
+        .section-range {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 2rem;
+            gap: 6px;
             flex-wrap: wrap;
-        }
-        .time-range-bar label {
-            color: #94a3b8;
-            font-size: 0.875rem;
-            margin-right: 4px;
+            margin-top: 8px;
         }
         .tr-btn {
             background: rgba(30, 41, 59, 0.6);
             border: 1px solid rgba(148, 163, 184, 0.3);
             color: #94a3b8;
-            padding: 6px 18px;
+            padding: 6px 14px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 0.875rem;
+            font-size: 0.825rem;
             font-weight: 600;
             transition: all 0.2s;
         }
         .tr-btn:hover { border-color: rgba(59,130,246,0.5); color: #e2e8f0; }
         .tr-btn.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; color: #93c5fd; }
 
-        .custom-range {
+        .inline-custom {
             display: none;
             align-items: center;
             gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 6px;
         }
-        .custom-range.visible { display: flex; }
-        .custom-range input[type="date"] {
+        .inline-custom.visible { display: flex; }
+        .inline-custom input[type="date"] {
             background: rgba(15,23,42,0.7);
             border: 1px solid rgba(148,163,184,0.3);
             color: #e2e8f0;
@@ -308,7 +305,7 @@
             border-radius: 6px;
             font-size: 0.825rem;
         }
-        .custom-range input[type="date"]::-webkit-calendar-picker-indicator {
+        .inline-custom input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(0.7);
         }
         .apply-btn {
@@ -321,6 +318,13 @@
             font-size: 0.825rem;
         }
         .apply-btn:hover { background: rgba(59,130,246,0.35); }
+
+        /* Heatmap filter toggles */
+        .heatmap-filter {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
 
         /* SVG tooltip */
         .cp-tooltip {
@@ -413,22 +417,6 @@
 
         <div id="dashboard" class="hidden">
 
-            <!-- ═══════════════════════════════════════════
-                 TIME RANGE SELECTOR
-            ════════════════════════════════════════════ -->
-            <div class="time-range-bar" aria-label="Time range selector">
-                <label>Range:</label>
-                <button class="tr-btn" id="tr-2w" onclick="setRange('2w',this)" aria-label="Last 2 weeks">2W</button>
-                <button class="tr-btn active" id="tr-1m" onclick="setRange('1m',this)" aria-label="Last month">1M</button>
-                <button class="tr-btn" id="tr-custom" onclick="setRange('custom',this)" aria-label="Custom date range">Custom</button>
-                <div class="custom-range" id="customRange">
-                    <input type="date" id="fromDate" aria-label="From date">
-                    <span style="color:#64748b;">→</span>
-                    <input type="date" id="toDate" aria-label="To date">
-                    <button class="apply-btn" onclick="applyCustomRange()" aria-label="Apply custom date range">Apply</button>
-                </div>
-            </div>
-
             <!-- Summary Stats -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -448,10 +436,21 @@
             <!-- Performance by Type -->
             <div class="section">
                 <h2>&#x1F4CA; Performance by Post Type</h2>
-                <div style="display:flex;gap:8px;margin-bottom:16px;">
-                    <button class="tf-btn active" onclick="switchTimeframe(24, this)" aria-label="View performance metrics for 24 hours">24h</button>
-                    <button class="tf-btn" onclick="switchTimeframe(72, this)" aria-label="View performance metrics for 3 days">3 days</button>
-                    <button class="tf-btn" onclick="switchTimeframe(168, this)" aria-label="View performance metrics for 7 days">7 days</button>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;" id="perfSnapshotBtns">
+                    <button class="tf-btn active" data-hours="24" onclick="switchTimeframe(24, this)" aria-label="View performance metrics for 24 hours">24h</button>
+                    <button class="tf-btn" data-hours="72" onclick="switchTimeframe(72, this)" aria-label="View performance metrics for 3 days">3 days</button>
+                    <button class="tf-btn" data-hours="168" onclick="switchTimeframe(168, this)" aria-label="View performance metrics for 7 days">7 days</button>
+                </div>
+                <div class="section-range" id="perfRangeBtns">
+                    <button class="tr-btn" onclick="setPerfRange('2w',this)">2W</button>
+                    <button class="tr-btn active" onclick="setPerfRange('1m',this)">1M</button>
+                    <button class="tr-btn" onclick="setPerfRange('custom',this)">Custom</button>
+                </div>
+                <div class="inline-custom" id="perfCustomRange">
+                    <input type="date" id="perfFromDate" aria-label="From date">
+                    <span style="color:#64748b;">→</span>
+                    <input type="date" id="perfToDate" aria-label="To date">
+                    <button class="apply-btn" onclick="applyPerfCustom()">Apply</button>
                 </div>
                 <table id="performanceTable">
                     <thead>
@@ -471,10 +470,21 @@
             <!-- Trends by Type -->
             <div class="section">
                 <h2>&#x1F4C8; Trends by Post Type</h2>
-                <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
                     <button class="tf-btn active" onclick="switchTrends(24, this)" aria-label="View trends for 24 hour snapshots">24h snapshots</button>
                     <button class="tf-btn" onclick="switchTrends(72, this)" aria-label="View trends for 3 day snapshots">3d snapshots</button>
                     <button class="tf-btn" onclick="switchTrends(168, this)" aria-label="View trends for 7 day snapshots">7d snapshots</button>
+                </div>
+                <div class="section-range">
+                    <button class="tr-btn" onclick="setTrendsRange('2w',this)">2W</button>
+                    <button class="tr-btn active" onclick="setTrendsRange('1m',this)">1M</button>
+                    <button class="tr-btn" onclick="setTrendsRange('custom',this)">Custom</button>
+                </div>
+                <div class="inline-custom" id="trendsCustomRange">
+                    <input type="date" id="trendsFromDate" aria-label="From date">
+                    <span style="color:#64748b;">→</span>
+                    <input type="date" id="trendsToDate" aria-label="To date">
+                    <button class="apply-btn" onclick="applyTrendsCustom()">Apply</button>
                 </div>
                 <div id="trendsChart" class="chart-container" aria-label="Trends by post type chart"></div>
             </div>
@@ -494,12 +504,40 @@
             <!-- Impression Decay Curve -->
             <div class="section">
                 <h2>📉 Impression Decay</h2>
+                <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">How impressions accumulate — flattening = post stopped spreading</p>
+                <div class="section-range">
+                    <button class="tr-btn" onclick="setDecayRange('2w',this)">2W</button>
+                    <button class="tr-btn active" onclick="setDecayRange('1m',this)">1M</button>
+                    <button class="tr-btn" onclick="setDecayRange('custom',this)">Custom</button>
+                </div>
+                <div class="inline-custom" id="decayCustomRange">
+                    <input type="date" id="decayFromDate" aria-label="From date">
+                    <span style="color:#64748b;">→</span>
+                    <input type="date" id="decayToDate" aria-label="To date">
+                    <button class="apply-btn" onclick="applyDecayCustom()">Apply</button>
+                </div>
                 <div id="decayChart" class="chart-container" aria-label="Impression decay curve by post type"></div>
             </div>
 
             <!-- Hour × Day Heatmap -->
             <div class="section">
                 <h2>🔥 Best Time to Post</h2>
+                <div class="heatmap-filter">
+                    <button class="tf-btn active" onclick="setHeatmapFilter('all',this)">All</button>
+                    <button class="tf-btn" onclick="setHeatmapFilter('post',this)">Posts</button>
+                    <button class="tf-btn" onclick="setHeatmapFilter('reply',this)">Replies</button>
+                </div>
+                <div class="section-range">
+                    <button class="tr-btn" onclick="setHeatmapRange('2w',this)">2W</button>
+                    <button class="tr-btn active" onclick="setHeatmapRange('1m',this)">1M</button>
+                    <button class="tr-btn" onclick="setHeatmapRange('custom',this)">Custom</button>
+                </div>
+                <div class="inline-custom" id="heatmapCustomRange">
+                    <input type="date" id="heatmapFromDate" aria-label="From date">
+                    <span style="color:#64748b;">→</span>
+                    <input type="date" id="heatmapToDate" aria-label="To date">
+                    <button class="apply-btn" onclick="applyHeatmapCustom()">Apply</button>
+                </div>
                 <div id="heatmapChart" class="chart-container" aria-label="Hour by day heatmap of impressions"></div>
                 <p class="heatmap-note">Times in UTC</p>
             </div>
@@ -521,57 +559,161 @@
         </footer>
     </div>
 
-    <script type="text/javascript">/* v4 */
+    <script type="text/javascript">/* v5 */
 
         // ═══════════════════════════════════════════════
-        //  TIME RANGE STATE
+        //  PER-SECTION RANGE STATE
+        //  Each section tracks its own mode/dates.
         // ═══════════════════════════════════════════════
-        const rangeState = {
-            mode: '1m',      // '2w' | '1m' | 'custom'
-            fromDate: null,  // ISO string YYYY-MM-DD
-            toDate: null,
+
+        /** Create a fresh per-section range state, defaulting to 1m. */
+        function mkRange(defaultMode) {
+            return { mode: defaultMode || '1m', fromDate: null, toDate: null };
+        }
+
+        const sectionRanges = {
+            stats:    mkRange('1m'),
+            perf:     mkRange('1m'),
+            trends:   mkRange('1m'),
+            decay:    mkRange('1m'),
+            heatmap:  mkRange('1m'),
         };
 
-        /** Build query-string parameters based on current rangeState. */
-        function rangeParams() {
-            if (rangeState.mode === 'custom' && rangeState.fromDate && rangeState.toDate) {
-                return `from_date=${rangeState.fromDate}&to_date=${rangeState.toDate}`;
+        /** Build query-string parameters from a section's range state. */
+        function buildQP(state) {
+            if (state.mode === 'custom' && state.fromDate && state.toDate) {
+                return `from_date=${state.fromDate}&to_date=${state.toDate}`;
             }
-            const days = rangeState.mode === '2w' ? 14 : 30;
+            const days = state.mode === '2w' ? 14 : 30;
             return `days=${days}`;
         }
 
-        function setRange(mode, btn) {
-            rangeState.mode = mode;
-            document.querySelectorAll('.tr-btn').forEach(b => b.classList.remove('active'));
+        /** Helper: toggle active on tr-btn siblings, show/hide inline-custom. */
+        function handleRangeBtn(btn, sectionState, customPanelId, onApply) {
+            btn.closest('.section-range').querySelectorAll('.tr-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-
-            const customRow = document.getElementById('customRange');
-            if (mode === 'custom') {
-                customRow.classList.add('visible');
-                // Pre-fill dates if empty
-                if (!document.getElementById('fromDate').value) {
-                    const to = new Date();
-                    const from = new Date(); from.setDate(from.getDate() - 30);
-                    document.getElementById('fromDate').value = from.toISOString().slice(0,10);
-                    document.getElementById('toDate').value = to.toISOString().slice(0,10);
+            const panel = document.getElementById(customPanelId);
+            if (btn.textContent.trim() === 'Custom') {
+                panel.classList.add('visible');
+                // pre-fill dates if empty
+                const fromId = customPanelId.replace('CustomRange', 'FromDate');
+                const toId   = customPanelId.replace('CustomRange', 'ToDate');
+                const fromEl = document.getElementById(fromId);
+                const toEl   = document.getElementById(toId);
+                if (fromEl && !fromEl.value) {
+                    const to = new Date(); const from = new Date();
+                    from.setDate(from.getDate() - 30);
+                    fromEl.value = from.toISOString().slice(0,10);
+                    toEl.value   = to.toISOString().slice(0,10);
                 }
                 // Don't reload yet — wait for Apply
-                return;
             } else {
-                customRow.classList.remove('visible');
+                panel.classList.remove('visible');
+                sectionState.mode = btn.textContent.trim() === '2W' ? '2w' : '1m';
+                sectionState.fromDate = null;
+                sectionState.toDate   = null;
+                onApply();
             }
-            reloadAll();
         }
 
-        function applyCustomRange() {
-            const from = document.getElementById('fromDate').value;
-            const to   = document.getElementById('toDate').value;
+        // ── Performance section range ──
+        function setPerfRange(mode, btn) {
+            handleRangeBtn(btn, sectionRanges.perf, 'perfCustomRange', reloadPerf);
+        }
+        function applyPerfCustom() {
+            const from = document.getElementById('perfFromDate').value;
+            const to   = document.getElementById('perfToDate').value;
             if (!from || !to) { alert('Please select both dates.'); return; }
-            if (from > to) { alert('From date must be before To date.'); return; }
-            rangeState.fromDate = from;
-            rangeState.toDate   = to;
-            reloadAll();
+            if (from > to)   { alert('From date must be before To date.'); return; }
+            sectionRanges.perf.mode     = 'custom';
+            sectionRanges.perf.fromDate = from;
+            sectionRanges.perf.toDate   = to;
+            reloadPerf();
+        }
+        async function reloadPerf() {
+            const qp = buildQP(sectionRanges.perf);
+            // Find currently active snapshot btn
+            const activeSnap = document.querySelector('#perfSnapshotBtns .tf-btn.active');
+            const hours = activeSnap ? parseInt(activeSnap.dataset.hours || '24', 10) : currentPerfHours;
+            try {
+                const data = await fetch(`/api/performance/${hours}?${qp}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderPerformanceTable(data);
+            } catch(e) { console.error('reloadPerf failed', e); }
+        }
+
+        // ── Trends section range ──
+        function setTrendsRange(mode, btn) {
+            handleRangeBtn(btn, sectionRanges.trends, 'trendsCustomRange', reloadTrends);
+        }
+        function applyTrendsCustom() {
+            const from = document.getElementById('trendsFromDate').value;
+            const to   = document.getElementById('trendsToDate').value;
+            if (!from || !to) { alert('Please select both dates.'); return; }
+            if (from > to)   { alert('From date must be before To date.'); return; }
+            sectionRanges.trends.mode     = 'custom';
+            sectionRanges.trends.fromDate = from;
+            sectionRanges.trends.toDate   = to;
+            reloadTrends();
+        }
+        async function reloadTrends() {
+            const qp = buildQP(sectionRanges.trends);
+            try {
+                const data = await fetch(`/api/trends/${currentTrendsHours}?${qp}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderTrendsChart(data);
+            } catch(e) { console.error('reloadTrends failed', e); }
+        }
+
+        // ── Decay section range ──
+        function setDecayRange(mode, btn) {
+            handleRangeBtn(btn, sectionRanges.decay, 'decayCustomRange', reloadDecay);
+        }
+        function applyDecayCustom() {
+            const from = document.getElementById('decayFromDate').value;
+            const to   = document.getElementById('decayToDate').value;
+            if (!from || !to) { alert('Please select both dates.'); return; }
+            if (from > to)   { alert('From date must be before To date.'); return; }
+            sectionRanges.decay.mode     = 'custom';
+            sectionRanges.decay.fromDate = from;
+            sectionRanges.decay.toDate   = to;
+            reloadDecay();
+        }
+        async function reloadDecay() {
+            const qp = buildQP(sectionRanges.decay);
+            try {
+                const data = await fetch(`/api/decay-curve?${qp}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderDecayChart(data);
+            } catch(e) { console.error('reloadDecay failed', e); }
+        }
+
+        // ── Heatmap section range + post-type filter ──
+        let currentHeatmapFilter = 'all';
+
+        function setHeatmapFilter(filter, btn) {
+            btn.closest('.heatmap-filter').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentHeatmapFilter = filter;
+            reloadHeatmap();
+        }
+        function setHeatmapRange(mode, btn) {
+            handleRangeBtn(btn, sectionRanges.heatmap, 'heatmapCustomRange', reloadHeatmap);
+        }
+        function applyHeatmapCustom() {
+            const from = document.getElementById('heatmapFromDate').value;
+            const to   = document.getElementById('heatmapToDate').value;
+            if (!from || !to) { alert('Please select both dates.'); return; }
+            if (from > to)   { alert('From date must be before To date.'); return; }
+            sectionRanges.heatmap.mode     = 'custom';
+            sectionRanges.heatmap.fromDate = from;
+            sectionRanges.heatmap.toDate   = to;
+            reloadHeatmap();
+        }
+        async function reloadHeatmap() {
+            const qp = buildQP(sectionRanges.heatmap);
+            const filterParam = currentHeatmapFilter !== 'all' ? `&post_type_filter=${currentHeatmapFilter}` : '';
+            try {
+                const data = await fetch(`/api/heatmap?${qp}${filterParam}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderHeatmap(data);
+            } catch(e) { console.error('reloadHeatmap failed', e); }
         }
 
         // ═══════════════════════════════════════════════
@@ -590,21 +732,27 @@
         function hideTooltip() { tooltip.style.display = 'none'; }
 
         // ═══════════════════════════════════════════════
-        //  FETCH
+        //  FETCH (stats only — sections load independently)
         // ═══════════════════════════════════════════════
-        async function fetchData() {
+        async function fetchInitialData() {
             try {
                 const signal = AbortSignal.timeout(10000);
-                const qp = rangeParams();
+                // Stats use a default 30-day window
+                const qpStats   = buildQP(sectionRanges.stats);
+                const qpPerf    = buildQP(sectionRanges.perf);
+                const qpTrends  = buildQP(sectionRanges.trends);
+                const qpDecay   = buildQP(sectionRanges.decay);
+                const qpHeatmap = buildQP(sectionRanges.heatmap);
+
                 const [stats, performance, hourly, daily, topPosts, trends, decay, heatmap] = await Promise.all([
-                    fetch(`/api/stats?${qp}`, { signal }).then(r => r.json()),
-                    fetch(`/api/performance/24?${qp}`, { signal }).then(r => r.json()),
-                    fetch(`/api/hourly-performance?${qp}`, { signal }).then(r => r.json()),
-                    fetch(`/api/daily-performance?${qp}`, { signal }).then(r => r.json()),
-                    fetch(`/api/top-posts?limit=10&${qp}`, { signal }).then(r => r.json()),
-                    fetch(`/api/trends/24?${qp}`, { signal }).then(r => r.json()),
-                    fetch(`/api/decay-curve?${qp}`, { signal }).then(r => r.json()),
-                    fetch(`/api/heatmap?${qp}`, { signal }).then(r => r.json()),
+                    fetch(`/api/stats?${qpStats}`,               { signal }).then(r => r.json()),
+                    fetch(`/api/performance/24?${qpPerf}`,        { signal }).then(r => r.json()),
+                    fetch(`/api/hourly-performance?days=30`,      { signal }).then(r => r.json()),
+                    fetch(`/api/daily-performance?days=30`,       { signal }).then(r => r.json()),
+                    fetch(`/api/top-posts?limit=10&${qpStats}`,   { signal }).then(r => r.json()),
+                    fetch(`/api/trends/24?${qpTrends}`,           { signal }).then(r => r.json()),
+                    fetch(`/api/decay-curve?${qpDecay}`,          { signal }).then(r => r.json()),
+                    fetch(`/api/heatmap?${qpHeatmap}`,            { signal }).then(r => r.json()),
                 ]);
                 return { stats, performance, hourly, daily, topPosts, trends, decay, heatmap };
             } catch (error) {
@@ -645,9 +793,10 @@
         async function switchTimeframe(hours, btn) {
             btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            currentPerfHours = hours;
             try {
                 const signal = AbortSignal.timeout(10000);
-                const data = await fetch(`/api/performance/${hours}?${rangeParams()}`, { signal }).then(r => r.json());
+                const data = await fetch(`/api/performance/${hours}?${buildQP(sectionRanges.perf)}`, { signal }).then(r => r.json());
                 renderPerformanceTable(data);
             } catch(e) {
                 console.error('Failed to load timeframe:', e);
@@ -660,9 +809,10 @@
         async function switchTrends(hours, btn) {
             btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            currentTrendsHours = hours;
             try {
                 const signal = AbortSignal.timeout(10000);
-                const data = await fetch(`/api/trends/${hours}?${rangeParams()}`, { signal }).then(r => r.json());
+                const data = await fetch(`/api/trends/${hours}?${buildQP(sectionRanges.trends)}`, { signal }).then(r => r.json());
                 renderTrendsChart(data);
             } catch(e) { console.error(e); }
         }
@@ -807,6 +957,8 @@
 
         // ═══════════════════════════════════════════════
         //  RENDER: IMPRESSION DECAY CURVE
+        //  X-axis: Day 1 | Day 3 | Day 7
+        //  A downward slope is expected — impressions plateau.
         // ═══════════════════════════════════════════════
         function renderDecayChart(rows) {
             const el = document.getElementById('decayChart');
@@ -822,7 +974,8 @@
 
             // X positions for 3 checkpoints
             const xPoints = [0, innerW / 2, innerW];
-            const xLabels = ['24h', '72h', '7d'];
+            // Updated labels: Day 1 | Day 3 | Day 7
+            const xLabels = ['Day 1', 'Day 3', 'Day 7'];
 
             // Y scale
             const allVals = rows.flatMap(r => [r.h24, r.h72, r.h168].filter(v => v != null));
@@ -842,14 +995,23 @@
                 gridLines += `<text x="-6" y="${y + 4}" text-anchor="end" fill="#64748b" font-size="10">${v.toLocaleString()}</text>`;
             }
 
+            // Arrow annotation: "↓ flattening = viral post" near top-right
+            const annotX = innerW - 90;
+            const annotY = 10;
+            const annotation = `<text x="${annotX}" y="${annotY}" fill="#64748b" font-size="9" font-style="italic">↓ line going flat = post stopped spreading</text>`;
+
             rows.forEach(row => {
                 const vals = [row.h24, row.h72, row.h168];
                 const color = typeColor(row.post_type);
 
+                // Tooltip also shows decay deltas
+                const d24_72  = row.decay_24_72  != null ? `  Δ Day1→Day3: ${row.decay_24_72 >= 0 ? '+' : ''}${row.decay_24_72}` : '';
+                const d72_168 = row.decay_72_168 != null ? `  Δ Day3→Day7: ${row.decay_72_168 >= 0 ? '+' : ''}${row.decay_72_168}` : '';
+
                 // Build line path only between non-null checkpoints
                 const pts = vals.map((v, i) => v != null ? { x: xPoints[i], y: yPos(v), v } : null);
                 let d = '';
-                pts.forEach((p, i) => {
+                pts.forEach((p) => {
                     if (!p) return;
                     d += (d === '' ? 'M' : 'L') + `${p.x},${p.y}`;
                 });
@@ -859,7 +1021,8 @@
 
                 pts.forEach((p, i) => {
                     if (!p) return;
-                    const label = `${row.post_type} @ ${xLabels[i]}: ${Math.round(p.v).toLocaleString()} avg impressions (${row.count} tweets)`;
+                    const snapLabel = xLabels[i];
+                    const label = `${row.post_type} @ ${snapLabel}: ${Math.round(p.v).toLocaleString()} avg impressions (n=${row.count})${i > 0 ? (i === 1 ? d24_72 : d72_168) : ''}`;
                     dots += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${color}" stroke="#0f172a" stroke-width="1.5"
                         class="decay-dot" data-tip="${label}"/>`;
                 });
@@ -875,6 +1038,7 @@
                     <svg width="${W}" height="${H}" style="display:block;font-family:inherit">
                         <g transform="translate(${PAD_L},${PAD_T})">
                             ${gridLines}
+                            ${annotation}
                             ${lines}
                             ${dots}
                             ${xAxisLabels}
@@ -884,12 +1048,14 @@
                 <div class="decay-legend" id="decayLegend"></div>
             `;
 
-            // Legend
+            // Legend shows decay delta summary
             const legendEl = document.getElementById('decayLegend');
             rows.forEach(row => {
                 const item = document.createElement('div');
                 item.className = 'decay-legend-item';
-                item.innerHTML = `<span style="display:inline-block;width:12px;height:3px;border-radius:2px;background:${typeColor(row.post_type)}"></span>${row.post_type} (n=${row.count})`;
+                const d1 = row.decay_24_72  != null ? ` Δ1→3: ${row.decay_24_72}` : '';
+                const d2 = row.decay_72_168 != null ? ` Δ3→7: ${row.decay_72_168}` : '';
+                item.innerHTML = `<span style="display:inline-block;width:12px;height:3px;border-radius:2px;background:${typeColor(row.post_type)}"></span>${row.post_type} (n=${row.count})${d1}${d2}`;
                 legendEl.appendChild(item);
             });
 
@@ -934,7 +1100,6 @@
             // Colour interpolation: #e0f2fe → #0369a1
             function heatColor(val) {
                 const t = val / maxVal;
-                // lerp between light and dark blue
                 const r1=224, g1=242, b1=254;
                 const r2=3,   g2=105, b2=161;
                 const r = Math.round(r1 + (r2-r1)*t);
@@ -1034,7 +1199,7 @@
         let currentPerfHours   = 24;
 
         async function reloadAll() {
-            const data = await fetchData();
+            const data = await fetchInitialData();
             if (!data) return;
 
             renderStats(data.stats);
@@ -1065,7 +1230,7 @@
         }
 
         async function init() {
-            const data = await fetchData();
+            const data = await fetchInitialData();
 
             if (!data) {
                 document.getElementById('loading').innerHTML = '<p style="color: #ef4444;">Failed to load data. Make sure the API is running.</p>';

@@ -448,13 +448,23 @@ def get_decay_curve(
             date_params,
         ).fetchall()
 
-        return [dict(row) for row in rows]
+        result = []
+        for row in rows:
+            d = dict(row)
+            h24 = d.get('h24')
+            h72 = d.get('h72')
+            h168 = d.get('h168')
+            d['decay_24_72'] = round(h24 - h72, 1) if h24 is not None and h72 is not None else None
+            d['decay_72_168'] = round(h72 - h168, 1) if h72 is not None and h168 is not None else None
+            result.append(d)
+        return result
 
 
 def get_heatmap(
     days: int = 30,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
+    post_type_filter: Optional[str] = None,
     db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Get impression heatmap data grouped by hour of day and day of week.
@@ -463,12 +473,26 @@ def get_heatmap(
         days: Rolling window in days (default 30)
         from_date: Optional ISO date lower bound (YYYY-MM-DD)
         to_date: Optional ISO date upper bound (YYYY-MM-DD)
+        post_type_filter: Optional filter — 'reply' (replies only), 'post' (non-replies), or None/'' for all
         db_path: Optional path to database file
 
     Returns:
         List of dicts: {hour: 0-23, dow: 0-6 (Sun=0), avg_impressions, posts}
     """
     date_frag, date_params = _date_filter_sql(days, from_date, to_date)
+
+    # Build post_type filter fragment
+    post_types_for_posts = ('tweet', 'post', 'trend', 'trust_signal', 'spicy', 'curated', 'pipeline', 'meme', 'thread')
+    if post_type_filter == 'reply':
+        type_frag = "AND p.post_type = 'reply'"
+        type_params: tuple = ()
+    elif post_type_filter == 'post':
+        placeholders = ','.join('?' * len(post_types_for_posts))
+        type_frag = f"AND p.post_type IN ({placeholders})"
+        type_params = post_types_for_posts
+    else:
+        type_frag = ''
+        type_params = ()
 
     with get_db_context(db_path) as conn:
         rows = conn.execute(
@@ -480,9 +504,10 @@ def get_heatmap(
                 FROM tweet_snapshots s
                 JOIN tweet_performance p ON p.tweet_id = s.tweet_id
                 WHERE s.snapshot_hours = 24 AND p.posted_at IS NOT NULL AND {date_frag}
+                {type_frag}
                 GROUP BY hour, dow
                 ORDER BY dow, hour""",
-            date_params,
+            (*date_params, *type_params),
         ).fetchall()
 
         return [dict(row) for row in rows]

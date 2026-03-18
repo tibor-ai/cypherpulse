@@ -172,13 +172,19 @@ async def api_heatmap(
     days: int = Query(default=30, ge=1, le=365),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    post_type_filter: Optional[str] = Query(default=None, description="Filter: 'reply', 'post', or omit for all"),
 ) -> JSONResponse:
     """Get hour × day heatmap data.
 
     Returns list of {hour: 0-23, dow: 0-6 (Sun=0), avg_impressions, posts}.
+    Accepts optional post_type_filter: 'reply' (replies only), 'post' (non-replies), or omit/all for no filter.
     """
     try:
-        data = get_heatmap(days=days, from_date=from_date, to_date=to_date)
+        # Normalise filter value
+        ptf = post_type_filter.lower().strip() if post_type_filter else None
+        if ptf == 'all':
+            ptf = None
+        data = get_heatmap(days=days, from_date=from_date, to_date=to_date, post_type_filter=ptf)
         return JSONResponse(data)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching heatmap: {e}")
