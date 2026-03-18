@@ -635,7 +635,7 @@
                         <input type="number" id="wordBubbleMinTweets" value="2" min="2" max="20"
                             style="width:60px;margin-left:6px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
                                    color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:0.875rem;"
-                            onchange="reloadWordBubbles()">
+                            onchange="reloadWordBubbles(); if(_benchmarkHandle && _cachedBenchmarkTweets) _rescoreBenchmark();">
                         <span id="minTweetsNote" style="margin-left:6px;font-size:0.75rem;color:#64748b;">(pairs require ≥ 2)</span>
                     </label>
                 </div>
@@ -859,6 +859,12 @@
             btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             reloadWordBubbles();
+            // Rescore benchmark from cache — no re-fetch needed
+            if (_benchmarkHandle && _cachedBenchmarkTweets) {
+                _rescoreBenchmark();
+            } else if (_benchmarkHandle) {
+                runBenchmark();
+            }
         }
 
         async function reloadWordBubbles() {
@@ -868,14 +874,35 @@
             try {
                 const data = await fetch(`/api/word-bubbles?${params}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
                 renderWordBubbles(data, 'wordBubbleChart');
-                // Re-run benchmark if one is active (mode may have changed)
-                if (_benchmarkHandle) { _renderBenchmarkData(null); runBenchmark(); }
+                // Rescore benchmark from cache — no re-fetch on control changes
+                if (_benchmarkHandle && _cachedBenchmarkTweets) {
+                    _rescoreBenchmark();
+                }
             } catch(e) { console.error('reloadWordBubbles failed', e); }
         }
 
         // ─── Benchmark ────────────────────────────────────────────────────────
 
         let _benchmarkHandle = '';
+        let _cachedBenchmarkTweets = null;  // raw tweet objects from last fetch
+
+        async function _rescoreBenchmark() {
+            if (!_cachedBenchmarkTweets || !_benchmarkHandle) return;
+            const minTweets = parseInt(document.getElementById('wordBubbleMinTweets').value) || 2;
+            try {
+                const resp = await fetch(
+                    `/api/benchmark/rescore?mode=${_wordBubbleMode}&top_n=50&min_tweets=${minTweets}`,
+                    {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(_cachedBenchmarkTweets),
+                        signal: AbortSignal.timeout(10000),
+                    }
+                );
+                const data = await resp.json();
+                _renderBenchmarkData(data, _benchmarkHandle);
+            } catch(e) { console.error('rescore failed', e); }
+        }
 
         async function runBenchmark() {
             const raw = document.getElementById('benchmarkHandle').value.trim().replace(/^@/, '');
@@ -893,10 +920,18 @@
             _showBenchmarkMsg('');
 
             try {
-                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=1&max_tweets=${maxTweets}`;
-                const timeoutMs = Math.max(30000, maxTweets * 150); // ~150ms per tweet as buffer
-                const data = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json());
-                _renderBenchmarkData(data, raw);
+                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=1&max_tweets=${maxTweets}&return_tweets=1`;
+                const timeoutMs = Math.max(30000, maxTweets * 150);
+                const resp = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json());
+                // Cache raw tweets for instant rescore on control changes
+                if (resp && resp.tweets) {
+                    _cachedBenchmarkTweets = resp.tweets;
+                    _renderBenchmarkData(resp.words, raw);
+                } else {
+                    // Fallback: old shape (plain array of words)
+                    _cachedBenchmarkTweets = null;
+                    _renderBenchmarkData(Array.isArray(resp) ? resp : [], raw);
+                }
             } catch(e) {
                 console.error('runBenchmark failed', e);
                 _showBenchmarkMsg('Failed to fetch benchmark data.');

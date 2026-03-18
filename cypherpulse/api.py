@@ -31,7 +31,7 @@ except ImportError:
     pass
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -538,6 +538,7 @@ async def api_benchmark(
     top_n: int = Query(default=50, ge=1, le=200),
     min_tweets: int = Query(default=1, ge=1, le=100),
     max_tweets: int = Query(default=200, ge=50, le=5000, description="Max tweets to fetch"),
+    return_tweets: bool = Query(default=False, description="Include raw tweet objects in response for client-side caching"),
 ) -> JSONResponse:
     """Fetch top 40 tweets from a handle and return word bubble data.
 
@@ -566,6 +567,28 @@ async def api_benchmark(
         logger.error(f"_score_tweets failed for @{clean_handle}: {e}", exc_info=True)
         data = []
     logger.info(f"Benchmark @{clean_handle}: {len(tweets)} tweets → {len(data)} words (mode={mode})")
+    if return_tweets:
+        return JSONResponse({"words": data, "tweets": tweets})
+    return JSONResponse(data)
+
+
+@app.post("/api/benchmark/rescore")
+async def api_benchmark_rescore(
+    tweets: List[Dict[str, Any]] = Body(..., description="Cached tweet objects"),
+    mode: str = Query(default='words'),
+    top_n: int = Query(default=50, ge=1, le=200),
+    min_tweets: int = Query(default=1, ge=1, le=100),
+) -> JSONResponse:
+    """Rescore already-fetched tweets with new parameters (mode/min_tweets/top_n).
+    Accepts the cached tweet list from the frontend — no re-fetching.
+    """
+    if mode not in ('words', 'pairs', 'both'):
+        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', or 'both'")
+    try:
+        data = _score_tweets(tweets, mode=mode, min_tweets=min_tweets, top_n=top_n)
+    except Exception as e:
+        logger.error(f"rescore failed: {e}", exc_info=True)
+        data = []
     return JSONResponse(data)
 
 
