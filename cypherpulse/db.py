@@ -470,25 +470,29 @@ def get_word_bubbles(
     to_date: Optional[str] = None,
     min_tweets: int = 2,
     top_n: int = 50,
+    mode: str = 'words',
     db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Get word frequency and impressions data for bubble chart.
 
     Tokenizes tweet text, removes stopwords, groups by word, and returns
-    top words by average 24h impressions.
+    top words by average 24h impressions. Optionally computes PMI bigrams.
 
     Args:
         days: Rolling window in days (default all)
         from_date: Optional ISO date lower bound (YYYY-MM-DD)
         to_date: Optional ISO date upper bound (YYYY-MM-DD)
-        min_tweets: Minimum number of tweets a word must appear in
+        min_tweets: Minimum number of tweets a word/bigram must appear in
         top_n: Maximum number of words to return
+        mode: 'words' (default) — single words only; 'pairs' — PMI bigrams only;
+              'both' — merge words + pairs, sort by score
         db_path: Optional path to database file
 
     Returns:
-        List of dicts: {word, count, avg_impressions, is_hashtag}
+        List of dicts: {word, count, avg_impressions, score, is_hashtag, is_bigram}
     """
     import re
+    import math
 
     STOPWORDS = {
         'the','a','an','is','are','was','were','be','been','being','have','has','had',
@@ -517,8 +521,14 @@ def get_word_bubbles(
             date_params,
         ).fetchall()
 
-    # word -> {tweets: set of tweet_ids, impressions_sum, impressions_count}
+    total_tweets = len(rows)  # total tweet corpus size for IDF weighting
+
+    # word -> {tweets: set of tweet_ids, imp_sum, is_hashtag}
     word_data: Dict[str, Any] = {}
+    # bigram -> {tweets: set of tweet_ids, imp_sum}
+    bigram_data: Dict[str, Any] = {}
+    # unigram tweet sets used for PMI calculation (regular words only, no hashtags)
+    unigram_for_pmi: Dict[str, Any] = {}
 
     for row in rows:
         tweet_id = row['tweet_id']
@@ -536,57 +546,110 @@ def get_word_bubbles(
         text_clean = re.sub(r'#\w+', ' ', text_clean)
         # Strip punctuation and split into words
         text_clean = re.sub(r'[^\w\s]', ' ', text_clean)
-        regular_words = text_clean.split()
+        raw_words = text_clean.split()
 
-        # Build token set for this tweet (deduplicated per tweet)
-        tokens = set()
-
-        # Add regular words (filtered)
-        for w in regular_words:
+        # Build ordered token list for bigrams (no dedup — preserves adjacency)
+        ordered_tokens = []
+        for w in raw_words:
             w = w.strip()
             if (len(w) >= 3
                     and w not in STOPWORDS
                     and not w.isnumeric()
                     and w.isalpha()):
-                tokens.add(w)
+                ordered_tokens.append(w)
+
+        # Build token set for this tweet (deduplicated per tweet)
+        token_set = set(ordered_tokens)
 
         # Add hashtags (deduplicated)
         for h in hashtags:
             h = h.strip()
             if len(h) >= 3:  # # + at least 2 chars (total 3 matches the global min)
-                tokens.add(h)
+                token_set.add(h)
 
-        for token in tokens:
+        # Unigram accumulation
+        for token in token_set:
             if token not in word_data:
-                word_data[token] = {'tweets': set(), 'imp_sum': 0}
+                word_data[token] = {'tweets': set(), 'imp_sum': 0, 'is_hashtag': token.startswith('#')}
             word_data[token]['tweets'].add(tweet_id)
             word_data[token]['imp_sum'] += impressions
 
-    import math
+        # Unigram sets for PMI (regular words only)
+        for token in set(ordered_tokens):
+            if token not in unigram_for_pmi:
+                unigram_for_pmi[token] = set()
+            unigram_for_pmi[token].add(tweet_id)
 
-    total_tweets = len(rows)  # total tweet corpus size for IDF weighting
+        # Bigram extraction: adjacent pairs, no stopwords, no hashtags
+        # (ordered_tokens already excludes stopwords and hashtags)
+        seen_bigrams: set = set()
+        for i in range(len(ordered_tokens) - 1):
+            a, b = ordered_tokens[i], ordered_tokens[i + 1]
+            bigram = f"{a} {b}"
+            if bigram not in seen_bigrams:
+                seen_bigrams.add(bigram)
+                if bigram not in bigram_data:
+                    bigram_data[bigram] = {'tweets': set(), 'imp_sum': 0}
+                bigram_data[bigram]['tweets'].add(tweet_id)
+                bigram_data[bigram]['imp_sum'] += impressions
 
-    # Build result list
-    results = []
-    for word, data in word_data.items():
-        count = len(data['tweets'])
-        if count < min_tweets:
-            continue
-        avg_imp = round(data['imp_sum'] / count, 1)
+    def _build_word_results() -> List[Dict[str, Any]]:
+        results = []
+        for word, data in word_data.items():
+            count = len(data['tweets'])
+            if count < min_tweets:
+                continue
+            avg_imp = round(data['imp_sum'] / count, 1)
+            idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+            score = round(avg_imp * idf, 2)
+            results.append({
+                'word': word,
+                'count': count,
+                'avg_impressions': avg_imp,
+                'score': score,
+                'is_hashtag': data['is_hashtag'],
+                'is_bigram': False,
+            })
+        return results
 
-        # IDF-weighted score: penalises words that appear in most tweets.
-        # Words in every tweet carry no discriminating signal — they score near 0.
-        # score = avg_impressions * log(total_tweets / count)
-        idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
-        score = round(avg_imp * idf, 2)
+    def _build_bigram_results() -> List[Dict[str, Any]]:
+        results = []
+        for bigram, data in bigram_data.items():
+            count = len(data['tweets'])
+            if count < min_tweets:
+                continue
+            avg_imp = round(data['imp_sum'] / count, 1)
 
-        results.append({
-            'word': word,
-            'count': count,
-            'avg_impressions': avg_imp,   # kept for tooltip
-            'score': score,               # bubble size — IDF-weighted
-            'is_hashtag': word.startswith('#'),
-        })
+            # PMI = log( P(a,b) / (P(a) * P(b)) )
+            a, b = bigram.split(' ', 1)
+            pa = len(unigram_for_pmi.get(a, set())) / max(total_tweets, 1)
+            pb = len(unigram_for_pmi.get(b, set())) / max(total_tweets, 1)
+            pab = count / max(total_tweets, 1)
+            if pa > 0 and pb > 0:
+                pmi = math.log(pab / (pa * pb))
+            else:
+                pmi = 0.0
+
+            pmi_weight = max(0.1, pmi)
+            idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+            score = round(avg_imp * idf * pmi_weight, 2)
+
+            results.append({
+                'word': bigram,
+                'count': count,
+                'avg_impressions': avg_imp,
+                'score': score,
+                'is_hashtag': False,
+                'is_bigram': True,
+            })
+        return results
+
+    if mode == 'pairs':
+        results = _build_bigram_results()
+    elif mode == 'both':
+        results = _build_word_results() + _build_bigram_results()
+    else:  # 'words' (default)
+        results = _build_word_results()
 
     # Sort by IDF-weighted score, take top_n
     results.sort(key=lambda x: x['score'], reverse=True)

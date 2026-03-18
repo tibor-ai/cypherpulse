@@ -625,7 +625,12 @@
             <div class="section">
                 <h2>☁️ Word Bubble Chart</h2>
                 <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">Words sized by average 24h impressions — based on tweet text in the selected date range</p>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                    <div>
+                        <button class="tf-btn active" onclick="setWordBubbleMode('words',this)" aria-label="Show single words">Words</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('pairs',this)" aria-label="Show word pairs (PMI bigrams)">Pairs</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('both',this)" aria-label="Show words and pairs together">Both</button>
+                    </div>
                     <label style="color:#94a3b8;font-size:0.875rem;">Min. tweets:
                         <input type="number" id="wordBubbleMinTweets" value="2" min="1" max="20"
                             style="width:60px;margin-left:6px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
@@ -808,10 +813,19 @@
         //  WORD BUBBLE CHART
         // ═══════════════════════════════════════════════
 
+        let _wordBubbleMode = 'words';
+
+        function setWordBubbleMode(mode, btn) {
+            _wordBubbleMode = mode;
+            btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            reloadWordBubbles();
+        }
+
         async function reloadWordBubbles() {
             const qp = buildGlobalQP();
             const minTweets = document.getElementById('wordBubbleMinTweets').value || 2;
-            const params = [qp, `min_tweets=${minTweets}`, 'top_n=50'].filter(Boolean).join('&');
+            const params = [qp, `min_tweets=${minTweets}`, 'top_n=50', `mode=${_wordBubbleMode}`].filter(Boolean).join('&');
             try {
                 const data = await fetch(`/api/word-bubbles?${params}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
                 renderWordBubbles(data);
@@ -922,10 +936,19 @@
                 circle.setAttribute('cx', c.cx);
                 circle.setAttribute('cy', c.cy);
                 circle.setAttribute('r', c.r);
-                circle.setAttribute('fill', c.is_hashtag
+                const fillColor = c.is_hashtag
                     ? '#f59e0b'
-                    : wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax));
+                    : wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax);
+                circle.setAttribute('fill', fillColor);
                 circle.setAttribute('opacity', '0.9');
+
+                // Bigrams get a dashed stroke border; hashtags/words get solid
+                if (c.is_bigram) {
+                    circle.setAttribute('stroke', wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax));
+                    circle.setAttribute('stroke-width', '2');
+                    circle.setAttribute('stroke-dasharray', '4,2');
+                    circle.setAttribute('fill-opacity', '0.75');
+                }
 
                 const label = document.createElementNS(ns, 'text');
                 label.setAttribute('x', c.cx);
@@ -947,7 +970,8 @@
                 const displayWord = c.word.length > maxChars ? c.word.slice(0, maxChars) + '…' : c.word;
                 label.textContent = displayWord;
 
-                const tip = `${c.word} — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''} (score: ${c.score != null ? c.score.toFixed(1) : '—'})`;
+                const kindLabel = c.is_bigram ? 'pair' : (c.is_hashtag ? 'hashtag' : 'word');
+                const tip = `${c.word} [${kindLabel}] — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''} (score: ${c.score != null ? c.score.toFixed(1) : '—'})`;
 
                 g.addEventListener('mouseenter', e => showTooltip(e, tip));
                 g.addEventListener('mousemove',  e => moveTooltip(e));
@@ -962,19 +986,37 @@
             el.appendChild(svg);
 
             // Legend
-            legendEl.innerHTML = `
+            const hasBigrams = words.some(w => w.is_bigram);
+            const hasHashtags = words.some(w => w.is_hashtag);
+            let legendHtml = '';
+            if (hasHashtags) {
+                legendHtml += `
                 <span style="display:flex;align-items:center;gap:6px;">
                     <span style="width:14px;height:14px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0;"></span>
                     Hashtag
-                </span>
+                </span>`;
+            }
+            legendHtml += `
                 <span style="display:flex;align-items:center;gap:6px;">
                     <span style="width:80px;height:14px;border-radius:4px;
                         background:linear-gradient(to right,#e0f2fe,#0369a1);display:inline-block;flex-shrink:0;"></span>
-                    Regular word (light = fewer impressions, dark = more)
-                </span>
-                <span style="display:flex;align-items:center;gap:6px;color:#64748b;">
-                    Circle size = avg impressions
+                    Word (light = fewer impressions, dark = more)
                 </span>`;
+            if (hasBigrams) {
+                legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink:0;">
+                        <circle cx="8" cy="8" r="6" fill="#3b82f6" fill-opacity="0.75"
+                            stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,2"/>
+                    </svg>
+                    Word pair (bigram, dashed)
+                </span>`;
+            }
+            legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;color:#64748b;">
+                    Circle size = IDF-weighted score
+                </span>`;
+            legendEl.innerHTML = legendHtml;
         }
 
         // ─── Info icon: close on outside click (mobile tap support) ───
