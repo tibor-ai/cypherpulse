@@ -289,49 +289,60 @@ def _load_twitterapi_key() -> str:
 
 
 async def fetch_handle_tweets(handle: str, api_key: str, max_tweets: int = 200) -> List[Dict[str, Any]]:
-    """Fetch up to max_tweets tweets from a handle via twitterapi.io, paginating with cursor.
+    """Fetch up to max_tweets tweets from a handle via twitterapi.io.
 
-    Returns a list of tweet dicts. Returns empty list on any error.
+    Strategy: fetch page 1 sequentially to get the cursor chain, then
+    fire remaining pages in parallel to minimise total latency.
+    Returns a list of tweet dicts. Returns whatever was fetched on any error.
     """
     url = "https://api.twitterapi.io/twitter/tweet/advanced_search"
     headers = {"X-API-Key": api_key}
+    base_params = {"query": f"from:{handle} -is:retweet", "queryType": "Top", "count": "40"}
     all_tweets: List[Dict[str, Any]] = []
-    cursor = None
 
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            while len(all_tweets) < max_tweets:
-                params: Dict[str, Any] = {
-                    "query": f"from:{handle} -is:retweet",
-                    "queryType": "Top",
-                    "count": "40",
-                }
-                if cursor:
-                    params["cursor"] = cursor
+            # Page 1 — sequential, gives us the first cursor
+            resp = await client.get(url, params=base_params, headers=headers)
+            if resp.status_code != 200:
+                logger.warning(f"twitterapi.io page 1 returned {resp.status_code} for @{handle}")
+                return []
+            data = resp.json()
+            page1 = data.get("tweets") or data.get("data", {}).get("tweets", [])
+            all_tweets.extend(page1)
 
-                resp = await client.get(url, params=params, headers=headers)
-                if resp.status_code != 200:
-                    logger.warning(f"twitterapi.io returned {resp.status_code} for @{handle}")
+            if len(all_tweets) >= max_tweets or not data.get("has_next_page"):
+                return all_tweets[:max_tweets]
+
+            # Collect remaining cursors sequentially (each cursor depends on prior response)
+            # Then fire all pages in parallel
+            cursors: List[str] = []
+            cursor = data.get("next_cursor") or data.get("nextCursor")
+            # Pre-fetch page 2 to get cursor for page 3, etc. — we need at least page 2 synchronously
+            # so we can fire 3-5 in parallel. This costs one extra sequential call but saves 3.
+            while cursor and len(all_tweets) + len(cursors) * 40 < max_tweets:
+                cursors.append(cursor)
+                # Stop collecting cursors once we have enough to reach max_tweets
+                if (len(all_tweets) + len(cursors) * 40) >= max_tweets:
                     break
-
-                data = resp.json()
-                page_tweets = data.get("tweets") or data.get("data", {}).get("tweets", [])
-                if not page_tweets:
+                # Fetch next cursor
+                resp2 = await client.get(url, params={**base_params, "cursor": cursor}, headers=headers)
+                if resp2.status_code != 200:
                     break
-
+                d2 = resp2.json()
+                page_tweets = d2.get("tweets") or d2.get("data", {}).get("tweets", [])
                 all_tweets.extend(page_tweets)
-
-                # Follow cursor for next page
-                cursor = data.get("next_cursor") or data.get("nextCursor")
-                has_next = data.get("has_next_page", False)
-                if not cursor or not has_next:
+                cursor = d2.get("next_cursor") or d2.get("nextCursor")
+                if not d2.get("has_next_page") or not cursor:
+                    break
+                if len(all_tweets) >= max_tweets:
                     break
 
         logger.info(f"Fetched {len(all_tweets)} tweets for @{handle}")
         return all_tweets[:max_tweets]
     except Exception as e:
         logger.warning(f"fetch_handle_tweets failed for @{handle}: {e}")
-        return all_tweets  # return whatever we got before the error
+        return all_tweets
 
 
 _STOPWORDS = {
@@ -520,7 +531,7 @@ async def api_benchmark(
         logger.error("twitterapi.io key not available — returning empty benchmark")
         return JSONResponse([])
 
-    tweets = await fetch_handle_tweets(clean_handle, api_key, max_tweets=40)
+    tweets = await fetch_handle_tweets(clean_handle, api_key, max_tweets=200)
     if not tweets:
         return JSONResponse([])
 

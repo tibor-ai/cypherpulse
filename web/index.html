@@ -874,13 +874,13 @@
             _benchmarkHandle = raw;
 
             const btn = document.getElementById('benchmarkBtn');
-            btn.textContent = 'Loading…';
+            btn.textContent = 'Fetching 200 tweets…';
             btn.disabled = true;
             _showBenchmarkMsg('');
 
             try {
                 const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=1`;
-                const data = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(30000) }).then(r => r.json());
+                const data = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(45000) }).then(r => r.json());
                 _renderBenchmarkData(data, raw);
             } catch(e) {
                 console.error('runBenchmark failed', e);
