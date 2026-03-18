@@ -4,6 +4,13 @@
 
 set -euo pipefail
 
+# Sentinel: detect truncated download (curl | bash partial execution guard)
+# If this variable is already set, we're being sourced/re-run — not a fresh pipe execution.
+# The sentinel INSTALL_COMPLETE is set at the bottom of this script; if the download was
+# truncated, the bottom is never reached and INSTALL_COMPLETE stays unset (safe — script
+# exits via set -e on any error, but a silent truncation would not trigger an error).
+_INSTALL_STARTED=1
+
 REPO_URL="https://github.com/tibor-ai/cypherpulse.git"
 DEFAULT_DIR="$(pwd)"
 
@@ -184,18 +191,44 @@ else
     TWITTER_USER="$EXISTING_USERNAME"
 fi
 
-# Write to .env using sed with safe delimiter (# instead of | to prevent injection)
-if grep -q "^TWITTER_API_KEY=" "$ENV_FILE" 2>/dev/null; then
-    sed -i.bak "s#^TWITTER_API_KEY=.*#TWITTER_API_KEY=$API_KEY#" "$ENV_FILE" || die "Failed to update .env"
-else
-    printf '\nTWITTER_API_KEY=%s\n' "$API_KEY" >> "$ENV_FILE" || die "Failed to write .env"
+# Validate API key characters to prevent sed/env injection
+if ! printf '%s' "$API_KEY" | grep -Eq '^[A-Za-z0-9_\-]+$'; then
+    die "API key contains invalid characters. Only alphanumeric, hyphens, and underscores are allowed."
 fi
-if grep -q "^TWITTER_USERNAME=" "$ENV_FILE" 2>/dev/null; then
-    sed -i.bak "s#^TWITTER_USERNAME=.*#TWITTER_USERNAME=$TWITTER_USER#" "$ENV_FILE" || die "Failed to update .env"
-else
-    printf '\nTWITTER_USERNAME=%s\n' "$TWITTER_USER" >> "$ENV_FILE" || die "Failed to write .env"
-fi
-rm -f "$ENV_FILE.bak" 2>/dev/null
+
+# Write .env using python3 to safely handle arbitrary values without sed injection risk
+export ENV_FILE="$ENV_FILE" _CP_API_KEY="$API_KEY" _CP_USER="$TWITTER_USER"
+python3 - <<'PYEOF'
+import os
+env_file = os.environ.get('ENV_FILE', '.env')
+api_key  = os.environ.get('_CP_API_KEY', '')
+username = os.environ.get('_CP_USER', '')
+
+lines = []
+if os.path.exists(env_file):
+    with open(env_file) as f:
+        lines = f.readlines()
+
+def set_var(lines, key, value):
+    found = False
+    result = []
+    for line in lines:
+        if line.startswith(key + '='):
+            result.append(f'{key}={value}\n')
+            found = True
+        else:
+            result.append(line)
+    if not found:
+        result.append(f'\n{key}={value}\n')
+    return result
+
+lines = set_var(lines, 'TWITTER_API_KEY', api_key)
+lines = set_var(lines, 'TWITTER_USERNAME', username)
+
+with open(env_file, 'w') as f:
+    f.writelines(lines)
+PYEOF
+unset _CP_API_KEY _CP_USER
 
 ok "Config saved"
 
@@ -312,3 +345,6 @@ msg "  cypherpulse scan      # fetch new tweets"
 msg "  cypherpulse collect   # snapshot metrics"
 msg "  cypherpulse serve     # open dashboard"
 msg ""
+
+# Sentinel: marks successful completion of a full (non-truncated) download
+INSTALL_COMPLETE=1

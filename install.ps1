@@ -55,9 +55,16 @@ if (Test-PythonVersion) {
 
     if (-not $installed) {
         $url = "https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe"
+        # SHA256 hash from https://www.python.org/downloads/release/python-3120/
+        $expectedHash = "B09A8D4B93AE08CC4F1A7EFF4E0F02C0AEF09066BFF4D61E82905D4D2B70E591"
         $tmp = "$env:TEMP\python-installer.exe"
         try {
             Invoke-WebRequest -Uri $url -OutFile $tmp
+            $actualHash = (Get-FileHash $tmp -Algorithm SHA256).Hash
+            if ($actualHash -ne $expectedHash) {
+                Remove-Item $tmp -ErrorAction SilentlyContinue
+                die "Python installer hash mismatch. Expected: $expectedHash, Got: $actualHash. Aborting for security."
+            }
             Start-Process -FilePath $tmp -Args "/quiet InstallAllUsers=1 PrependPath=1" -Wait
             Remove-Item $tmp
             $installed = $true
@@ -89,7 +96,8 @@ if (Test-Path "$InstallDir\.git") {
         try {
             if (Get-Command git -ErrorAction SilentlyContinue) {
                 git pull origin main
-                ok "Repository updated"
+                if ($LASTEXITCODE -ne 0) { warn "Git pull failed (exit $LASTEXITCODE), skipping update" }
+                else { ok "Repository updated" }
             } else { warn "Git not found, skipping update" }
         } catch { warn "Git pull failed, skipping update" }
         Pop-Location
@@ -98,6 +106,7 @@ if (Test-Path "$InstallDir\.git") {
     msg "Cloning repository..."
     if (Get-Command git -ErrorAction SilentlyContinue) {
         git clone $RepoUrl $InstallDir
+        if ($LASTEXITCODE -ne 0) { die "Git clone failed (exit $LASTEXITCODE). Check network/URL and retry." }
     } else {
         warn "Git not found. Downloading ZIP..."
         $zip = "$env:TEMP\cypherpulse.zip"
@@ -123,10 +132,13 @@ if (-not (Test-Path "venv")) {
 }
 
 & ".\venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
+if ($LASTEXITCODE -ne 0) { die "Failed to upgrade pip (exit $LASTEXITCODE)" }
+
 & ".\venv\Scripts\pip.exe" install -r requirements.txt --quiet
-if (-not $?) { die "Failed to install dependencies" }
+if ($LASTEXITCODE -ne 0) { die "Failed to install dependencies (exit $LASTEXITCODE)" }
 
 & ".\venv\Scripts\pip.exe" install -e . --quiet 2>$null
+if ($LASTEXITCODE -ne 0) { die "Failed to install CypherPulse package (exit $LASTEXITCODE)" }
 ok "Dependencies installed"
 
 # ---------- config: API key + username ----------
