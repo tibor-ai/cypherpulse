@@ -520,7 +520,7 @@ async def api_benchmark(
         logger.error("twitterapi.io key not available — returning empty benchmark")
         return JSONResponse([])
 
-    tweets = await fetch_handle_tweets(clean_handle, api_key)
+    tweets = await fetch_handle_tweets(clean_handle, api_key, max_tweets=40)
     if not tweets:
         return JSONResponse([])
 
