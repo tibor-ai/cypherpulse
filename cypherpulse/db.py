@@ -1,14 +1,16 @@
 """Database management for CypherPulse."""
 
+import math
+import os
+import re
 import sqlite3
 import logging
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Tuple
 from contextlib import contextmanager
-import os
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Library modules should not configure root logging — let the application decide.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 # Database schema definition
@@ -63,7 +65,7 @@ def _validate_db_path(path_str: str) -> Path:
     home = Path.home().resolve()
     cwd = Path.cwd().resolve()
     
-    if not (str(path).startswith(str(home)) or str(path).startswith(str(cwd))):
+    if not (path.is_relative_to(home) or path.is_relative_to(cwd)):
         raise ValueError(f"Database path must be within home directory or working directory")
     
     return path
@@ -492,9 +494,6 @@ def get_word_bubbles(
     Returns:
         List of dicts: {word, count, avg_impressions, score, is_hashtag, is_bigram}
     """
-    import re
-    import math
-
     STOPWORDS = {
         'the','a','an','is','are','was','were','be','been','being','have','has','had',
         'do','does','did','will','would','could','should','may','might','shall','can',

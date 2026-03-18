@@ -4,15 +4,16 @@ CypherPulse public account analyzer.
 Fetches recent tweets for any public account and produces an engagement breakdown.
 Usage: python analyze_public_account.py <handle> [--api-key KEY]
 """
-import sys
 import json
+import os
+import sys
 import argparse
 import requests
 from datetime import datetime
 from collections import defaultdict
 from pathlib import Path
 
-def fetch_tweets(handle: str, api_key: str, count: int = 40) -> list:
+def fetch_tweets(handle: str, api_key: str, count: int = 40) -> list[dict]:
     resp = requests.get(
         "https://api.twitterapi.io/twitter/tweet/advanced_search",
         params={"query": f"from:{handle} -is:retweet", "queryType": "Latest", "count": count},
@@ -26,7 +27,7 @@ def fetch_tweets(handle: str, api_key: str, count: int = 40) -> list:
         raise ValueError(f"Account @{handle} is unavailable: {d['data'].get('unavailableReason','unknown')}")
     return tweets
 
-def analyze(handle: str, tweets: list) -> dict:
+def analyze(handle: str, tweets: list[dict]) -> dict:
     by_hour = defaultdict(lambda: {"count": 0, "likes": 0, "rts": 0, "replies": 0})
     all_engagement = []
 
@@ -77,7 +78,7 @@ def analyze(handle: str, tweets: list) -> dict:
         ]
     }
 
-def print_report(result: dict):
+def print_report(result: dict) -> None:
     h = result["handle"]
     print(f"\n📊 CypherPulse Analysis — @{h}")
     print(f"{'─'*45}")
@@ -99,7 +100,7 @@ def print_report(result: dict):
 
     print(f"\n→ Track your own: github.com/tibor-ai/cypherpulse")
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze a public X account with CypherPulse")
     parser.add_argument("handle", help="Twitter/X handle (without @)")
     parser.add_argument("--api-key", help="twitterapi.io API key")
@@ -108,11 +109,15 @@ def main():
 
     api_key = args.api_key
     if not api_key:
-        secrets = Path("/root/.openclaw/secrets/twitterapi-io.json")
+        # Prefer environment variable; fall back to configurable secrets file path.
+        api_key = os.environ.get('TWITTERAPI_IO_KEY') or os.environ.get('TWITTER_API_KEY')
+    if not api_key:
+        secrets_path = os.environ.get('TWITTERAPI_SECRET_PATH', '')
+        secrets = Path(secrets_path) if secrets_path else Path.home() / '.cypherpulse' / 'twitterapi-io.json'
         if secrets.exists():
             api_key = json.loads(secrets.read_text())["api_key"]
         else:
-            print("Error: provide --api-key or configure twitterapi-io.json", file=sys.stderr)
+            print("Error: provide --api-key, set TWITTERAPI_IO_KEY env var, or set TWITTERAPI_SECRET_PATH.", file=sys.stderr)
             sys.exit(1)
 
     try:

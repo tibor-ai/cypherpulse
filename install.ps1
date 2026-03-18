@@ -206,6 +206,8 @@ if (-not $hasConfig) {
         $envContent += "`nTWITTER_USERNAME=$TwitterUser"
     }
     Set-Content -Path $EnvFile -Value $envContent -NoNewline
+    # Restrict .env file permissions to current user only (remove inherited ACEs)
+    icacls "$EnvFile" /inheritance:r /grant:r "$($env:USERNAME):(R,W)" | Out-Null
     ok "Config saved"
 } else {
     $ApiKey = $existingKey

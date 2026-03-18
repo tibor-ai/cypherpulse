@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
     <title>CypherPulse - X/Twitter Analytics</title>
     <style>
         * {
@@ -638,18 +639,20 @@
                         <h3 id="wordBubbleYourTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;display:none;">Your tweets</h3>
                         <div id="wordBubbleChart"></div>
                         <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
-                        <div style="display:flex;gap:8px;margin-top:10px;">
+                        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
                             <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('own')">⬇ Download CSV</button>
                             <button class="tf-btn" style="font-size:0.8rem;" id="copyOwnBtn" onclick="copyWordBubbleCSV('own')">⎘ Copy</button>
+                            <span id="wordBubbleOwnMsg" role="alert" aria-live="polite" style="display:none;color:#f87171;font-size:0.75rem;"></span>
                         </div>
                     </div>
                     <div id="wordBubbleBenchmarkOuter" style="flex:1;min-width:260px;display:none;">
                         <h3 id="wordBubbleBenchmarkTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;"></h3>
                         <div id="wordBubbleChartBenchmark"></div>
                         <div id="wordBubbleChartBenchmarkLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
-                        <div style="display:flex;gap:8px;margin-top:10px;">
+                        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
                             <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('benchmark')">⬇ Download CSV</button>
                             <button class="tf-btn" style="font-size:0.8rem;" id="copyBenchmarkBtn" onclick="copyWordBubbleCSV('benchmark')">⎘ Copy</button>
+                            <span id="wordBubbleBenchmarkMsg" role="alert" aria-live="polite" style="display:none;color:#f87171;font-size:0.75rem;"></span>
                         </div>
                     </div>
                 </div>
@@ -669,7 +672,7 @@
             <!-- Global Date Range Bar -->
             <div class="global-range-bar" id="globalRangeBar">
                 <span class="global-range-label">Tweet date range:</span>
-                <span class="info-icon" id="globalRangeInfo" onclick="this.classList.toggle('open')" aria-label="About date range filter">ⓘ<span class="info-tip">Filters which tweets are included based on when they were posted. For example, '7d' shows only tweets posted in the last 7 days.</span></span>
+                <span class="info-icon" id="globalRangeInfo" tabindex="0" onclick="this.classList.toggle('open')" onkeydown="if(event.key==='Enter'||event.key===' ')this.classList.toggle('open')" aria-label="About date range filter">ⓘ<span class="info-tip">Filters which tweets are included based on when they were posted. For example, '7d' shows only tweets posted in the last 7 days.</span></span>
                 <div class="global-range-btns" id="globalRangeBtns">
                     <button class="gr-btn" data-mode="1" onclick="setGlobalRange(1,this)">24h</button>
                     <button class="gr-btn active" data-mode="7" onclick="setGlobalRange(7,this)">7d</button>
@@ -683,6 +686,7 @@
                     <span style="color:#64748b;">→</span>
                     <input type="date" id="globalToDate" aria-label="To date">
                     <button class="apply-btn" onclick="applyGlobalCustom()">Apply</button>
+                    <span id="globalDateError" role="alert" aria-live="polite" style="display:none;color:#f87171;font-size:0.8rem;margin-left:6px;"></span>
                 </div>
             </div>
 
@@ -691,7 +695,7 @@
                 <h2>&#x1F4CA; Performance by Post Type</h2>
                 <div class="snapshot-row" id="perfSnapshotBtns">
                     <span class="snapshot-label">Snapshot:</span>
-                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
+                    <span class="info-icon" tabindex="0" onclick="this.classList.toggle('open')" onkeydown="if(event.key==='Enter'||event.key===' ')this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
 
 ⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
                     <button class="tf-btn active" data-hours="24" onclick="switchTimeframe(24, this)" aria-label="View performance at 24h snapshot">At 24h</button>
@@ -718,7 +722,7 @@
                 <h2>&#x1F4C8; Trends by Post Type</h2>
                 <div class="snapshot-row">
                     <span class="snapshot-label">Snapshot:</span>
-                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
+                    <span class="info-icon" tabindex="0" onclick="this.classList.toggle('open')" onkeydown="if(event.key==='Enter'||event.key===' ')this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
 
 ⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
                     <button class="tf-btn active" onclick="switchTrends(24, this)" aria-label="View trends at 24h snapshot">At 24h</button>
@@ -828,11 +832,18 @@
             }
         }
 
+        function _showDateError(msg) {
+            const el = document.getElementById('globalDateError');
+            if (msg) { el.textContent = msg; el.style.display = ''; }
+            else { el.textContent = ''; el.style.display = 'none'; }
+        }
+
         function applyGlobalCustom() {
             const from = document.getElementById('globalFromDate').value;
             const to   = document.getElementById('globalToDate').value;
-            if (!from || !to) { alert('Please select both dates.'); return; }
-            if (from > to)    { alert('From date must be before To date.'); return; }
+            if (!from || !to) { _showDateError('Please select both dates.'); return; }
+            if (from > to)    { _showDateError('From date must be before To date.'); return; }
+            _showDateError('');
             globalRange.mode     = 'custom';
             globalRange.fromDate = from;
             globalRange.toDate   = to;
@@ -988,10 +999,18 @@
             return [header, ...rows].join('\n');
         }
 
+        function _showWordBubbleMsg(which, msg) {
+            const msgId = which === 'benchmark' ? 'wordBubbleBenchmarkMsg' : 'wordBubbleOwnMsg';
+            const el = document.getElementById(msgId);
+            if (!el) return;
+            if (msg) { el.textContent = msg; el.style.display = ''; setTimeout(() => { el.textContent = ''; el.style.display = 'none'; }, 3000); }
+            else { el.textContent = ''; el.style.display = 'none'; }
+        }
+
         function downloadWordBubbleCSV(which) {
             const csv = _buildCSV(which);
             const label = which === 'benchmark' ? (_benchmarkHandle || 'benchmark') : 'your_tweets';
-            if (!csv) { alert('No data to download yet.'); return; }
+            if (!csv) { _showWordBubbleMsg(which, 'No data to download yet.'); return; }
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1003,7 +1022,7 @@
 
         function copyWordBubbleCSV(which) {
             const words = which === 'benchmark' ? _lastBenchmarkWords : _lastOwnWords;
-            if (!words || words.length === 0) { alert('No data to copy yet.'); return; }
+            if (!words || words.length === 0) { _showWordBubbleMsg(which, 'No data to copy yet.'); return; }
             // Copy words only — one per line, no numbers
             const csv = words.map(w => w.word || '').filter(Boolean).join('\n');
             const btnId = which === 'benchmark' ? 'copyBenchmarkBtn' : 'copyOwnBtn';
@@ -1657,7 +1676,7 @@
             });
 
             const svgW = Math.max(500, dates.length * (groupW + 8));
-            el.innerHTML = `<div style="overflow-x:auto"><svg width="${svgW}" height="${chartH + 40}" style="display:block">
+            el.innerHTML = `<div style="overflow-x:auto"><svg width="${svgW}" height="${chartH + 40}" style="display:block" role="img" aria-label="Trends by post type bar chart">
                 <g transform="translate(10,8)">${bars}${labels}</g>
                 <g transform="translate(10,${chartH + 32})">${legend}</g>
             </svg></div>`;
@@ -1722,6 +1741,8 @@
 
             const chart = document.createElement('div');
             chart.className = 'bar-chart';
+            chart.setAttribute('role', 'img');
+            chart.setAttribute('aria-label', `${containerId.replace('Chart', '')} bar chart`);
 
             labelOrder.forEach((axisLabel, i) => {
                 const total = totals[i];
@@ -1840,7 +1861,7 @@
 
             el.innerHTML = `
                 <div style="overflow-x:auto">
-                    <svg width="${W}" height="${H}" style="display:block;font-family:inherit">
+                    <svg width="${W}" height="${H}" style="display:block;font-family:inherit" role="img" aria-label="Impression decay curve chart">
                         <g transform="translate(${PAD_L},${PAD_T})">
                             ${gridLines}${annotation}${lines}${dots}${xAxisLabels}${subLabel}
                         </g>
@@ -1929,7 +1950,7 @@
 
             el.innerHTML = `
                 <div style="overflow-x:auto">
-                    <svg width="${totalW}" height="${totalH}" style="display:block;font-family:inherit">
+                    <svg width="${totalW}" height="${totalH}" style="display:block;font-family:inherit" role="img" aria-label="Hour by day heatmap of impressions">
                         ${colLabels}${rowLabels}${cells}
                     </svg>
                 </div>`;

@@ -8,13 +8,18 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from .db import get_db, get_db_context
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Library modules should not configure root logging — let the application decide.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 # Measure engagement at 1 day, 3 days, and 7 days to track engagement decay patterns.
 # These intervals capture initial viral spread (24h), sustained interest (72h), and long-tail discovery (168h).
 SNAPSHOT_HOURS = [24, 72, 168]
+
+# Twitter's character limit for tweet text storage truncation.
+TWEET_MAX_CHARS = 280
+# Maximum number of recent tweets to check per collect_snapshots() run.
+COLLECT_TWEET_LIMIT = 500
 
 
 def _should_continue_pagination(cursor: Optional[str], tweets: List[Dict], 
@@ -230,7 +235,7 @@ def scan_tweets(username: str, api_key: str, db_path: Optional[str] = None) -> i
                     continue
                 
                 post_type = detect_post_type(tweet)
-                text = tweet.get("text", "")[:280]
+                text = tweet.get("text", "")[:TWEET_MAX_CHARS]
                 created_at = parse_twitter_date(tweet.get("createdAt", ""))
                 
                 conn.execute("""
@@ -329,10 +334,10 @@ def collect_snapshots(api_key: str, db_path: Optional[str] = None) -> int:
             now = datetime.now(timezone.utc)
             
             # Get recent tweets
-            rows = conn.execute("""
+            rows = conn.execute(f"""
                 SELECT tweet_id, post_type, posted_at 
                 FROM tweet_performance
-                ORDER BY posted_at DESC LIMIT 500
+                ORDER BY posted_at DESC LIMIT {COLLECT_TWEET_LIMIT}
             """).fetchall()
             
             updated = 0

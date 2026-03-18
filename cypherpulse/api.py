@@ -1,5 +1,6 @@
 """FastAPI backend for CypherPulse dashboard."""
 
+import asyncio
 import json
 import logging
 import math
@@ -48,8 +49,8 @@ from .db import (
 )
 from . import __version__
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Library modules should not configure root logging — let the application decide.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="CypherPulse API", version=__version__)
@@ -255,8 +256,10 @@ async def api_word_bubbles(
 
 # ─── Benchmark helpers ────────────────────────────────────────────────────────
 
+# Use TWITTERAPI_SECRET_PATH env var to configure the secrets file location.
+# The default falls back to a user-local path that does not reveal server structure.
 _TWITTERAPI_SECRET_PATH = Path(
-    os.getenv("TWITTERAPI_SECRET_PATH", "/root/.openclaw/secrets/twitterapi-io.json")
+    os.getenv("TWITTERAPI_SECRET_PATH") or str(Path.home() / ".cypherpulse" / "twitterapi-io.json")
 )
 
 def _load_twitterapi_key() -> str:
@@ -285,7 +288,8 @@ def _load_twitterapi_key() -> str:
             return json.load(f)["api_key"]
     except Exception:
         pass
-    logger.error("twitterapi.io key not found — set TWITTER_API_KEY in .env or TWITTERAPI_IO_KEY env var")
+    logger.error("twitterapi.io key not found — set TWITTER_API_KEY in .env or TWITTERAPI_IO_KEY env var. "
+                 "Optionally set TWITTERAPI_SECRET_PATH to a secrets JSON file.")
     return ""
 
 
@@ -301,8 +305,6 @@ async def fetch_handle_tweets(handle: str, api_key: str, max_tweets: int = 200) 
     response), but the actual tweet payloads can be fetched in parallel once we have
     all cursors. We pre-walk to collect N cursors, then fire N concurrent requests.
     """
-    import asyncio as _asyncio
-
     url = "https://api.twitterapi.io/twitter/tweet/advanced_search"
     headers = {"X-API-Key": api_key}
     base_params = {"query": f"from:{handle} -is:retweet", "queryType": "Top", "count": "40"}
@@ -357,7 +359,7 @@ async def fetch_handle_tweets(handle: str, api_key: str, max_tweets: int = 200) 
                 remaining_cursors = [c for c in cursors if c != d1.get("next_cursor")]
                 if remaining_cursors:
                     tasks = [fetch_page(client, c) for c in remaining_cursors]
-                    results = await _asyncio.gather(*tasks, return_exceptions=True)
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
                     for r in results:
                         if isinstance(r, dict):
                             pts = r.get("tweets") or r.get("data", {}).get("tweets", [])
