@@ -53,3 +53,4 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+Q-REPORT.md
