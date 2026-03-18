@@ -628,7 +628,7 @@
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                     <div>
                         <button class="tf-btn active" onclick="setWordBubbleMode('words',this)" aria-label="Show single words">Words</button>
-                        <button class="tf-btn" onclick="setWordBubbleMode('pairs',this)" aria-label="Show word pairs (PMI bigrams)">Pairs</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('pairs',this)" aria-label="Show word pairs (PMI bigrams)">Bigrams</button>
                         <button class="tf-btn" onclick="setWordBubbleMode('trigrams',this)" aria-label="Show word trigrams (PMI trigrams)">Trigrams</button>
                         <button class="tf-btn" onclick="setWordBubbleMode('all',this)" aria-label="Show words, pairs, and trigrams together">All</button>
                     </div>
@@ -1236,7 +1236,7 @@
                         <circle cx="8" cy="8" r="6" fill="#3b82f6" fill-opacity="0.75"
                             stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,2"/>
                     </svg>
-                    Word pair (bigram, dashed)
+                    Bigram (dashed)
                 </span>`;
             }
             if (hasTrigrams) {
