@@ -13,23 +13,17 @@ from typing import Dict, List, Any, Optional, Union
 try:
     from dotenv import load_dotenv as _load_dotenv
     _env_search = [
-        Path(__file__).resolve().parent.parent / ".env",   # worktree root
-        Path.cwd() / ".env",                               # cwd
-        Path.cwd().parent / ".env",                        # cwd parent
-        Path.home() / ".cypherpulse" / ".env",            # ~/.cypherpulse/.env
-        Path.home() / "projects" / "cypherpulse" / ".env", # ~/projects/cypherpulse/.env
+        Path(__file__).resolve().parent.parent / ".env",        # worktree/repo root
+        Path(__file__).resolve().parent.parent.parent / ".env", # one level up (sibling repos)
+        Path.cwd() / ".env",
+        Path.cwd().parent / ".env",
+        Path.home() / ".cypherpulse" / ".env",
+        Path.home() / "projects" / "cypherpulse" / ".env",
     ]
-    _loaded = False
+    # Load all found .env files (first wins, later ones don't override)
     for _env_candidate in _env_search:
         if _env_candidate.exists():
             _load_dotenv(_env_candidate, override=False)
-            _loaded = True
-            break
-    if not _loaded:
-        # Try all candidates without breaking — load all that exist
-        for _env_candidate in _env_search:
-            if _env_candidate.exists():
-                _load_dotenv(_env_candidate, override=False)
 except ImportError:
     pass
 
