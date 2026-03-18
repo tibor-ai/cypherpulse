@@ -1155,8 +1155,10 @@
 
             const map = {};
             rows.forEach(r => {
-                if (!map[r.dow]) map[r.dow] = {};
-                map[r.dow][r.hour] = r;
+                const dow = parseInt(r.dow, 10);
+                const hour = parseInt(r.hour, 10);
+                if (!map[dow]) map[dow] = {};
+                map[dow][hour] = r;
             });
             const maxVal = Math.max(...rows.map(r => r.avg_impressions || 0), 1);
 
@@ -1186,7 +1188,7 @@
                     const cell = map[d] && map[d][h];
                     const val  = cell ? (cell.avg_impressions || 0) : 0;
                     const posts = cell ? cell.posts : 0;
-                    const color = val > 0 ? heatColor(val) : 'rgba(15,23,42,0.5)';
+                    const color = val > 0 ? heatColor(val) : (posts > 0 ? heatColor(0.01) : 'rgba(15,23,42,0.4)');
                     const tip = `${DAY_NAMES[d]} ${String(h).padStart(2,'0')}:00 — avg ${Math.round(val).toLocaleString()} impressions (${posts} post${posts !== 1 ? 's' : ''})`;
                     cells += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="${color}" class="hm-cell" data-tip="${tip}"/>`;
                 }
