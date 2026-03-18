@@ -267,28 +267,48 @@
             font-size: 0.875rem;
         }
 
-        /* Per-section time range controls */
-        .section-range {
+        /* ─── Global date range bar ─── */
+        .global-range-bar {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 10px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 2rem;
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .global-range-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+        .global-range-btns {
+            display: flex;
             gap: 6px;
             flex-wrap: wrap;
-            margin-top: 8px;
+            align-items: center;
         }
-        .tr-btn {
+        .gr-btn {
             background: rgba(30, 41, 59, 0.6);
             border: 1px solid rgba(148, 163, 184, 0.3);
             color: #94a3b8;
-            padding: 6px 14px;
+            padding: 6px 16px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 0.825rem;
+            font-size: 0.875rem;
             font-weight: 600;
             transition: all 0.2s;
         }
-        .tr-btn:hover { border-color: rgba(59,130,246,0.5); color: #e2e8f0; }
-        .tr-btn.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; color: #93c5fd; }
+        .gr-btn:hover { border-color: rgba(59,130,246,0.5); color: #e2e8f0; }
+        .gr-btn.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; color: #93c5fd; }
 
+        /* Custom date inputs (global + per-section) */
         .inline-custom {
             display: none;
             align-items: center;
@@ -318,6 +338,80 @@
             font-size: 0.825rem;
         }
         .apply-btn:hover { background: rgba(59,130,246,0.35); }
+
+        /* ─── ⓘ Tooltip ─── */
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(148,163,184,0.15);
+            color: #64748b;
+            font-size: 11px;
+            font-style: normal;
+            font-weight: 700;
+            cursor: pointer;
+            position: relative;
+            line-height: 1;
+            user-select: none;
+            vertical-align: middle;
+            margin-left: 4px;
+            flex-shrink: 0;
+        }
+        .info-icon:hover { background: rgba(59,130,246,0.25); color: #93c5fd; }
+        .info-icon .info-tip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.5;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 280px;
+            width: max-content;
+            white-space: pre-line;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            border: 1px solid rgba(148,163,184,0.15);
+        }
+        .info-icon .info-tip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+        }
+        .info-icon:hover .info-tip,
+        .info-icon.open .info-tip {
+            display: block;
+        }
+
+        /* Per-section snapshot controls */
+        .snapshot-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .snapshot-label {
+            color: #64748b;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
 
         /* Heatmap filter toggles */
         .heatmap-filter {
@@ -433,24 +527,37 @@
                 </div>
             </div>
 
+            <!-- Global Date Range Bar -->
+            <div class="global-range-bar" id="globalRangeBar">
+                <span class="global-range-label">Tweet date range:</span>
+                <span class="info-icon" id="globalRangeInfo" onclick="this.classList.toggle('open')" aria-label="About date range filter">ⓘ<span class="info-tip">Filters which tweets are included based on when they were posted. For example, '7d' shows only tweets posted in the last 7 days.</span></span>
+                <div class="global-range-btns" id="globalRangeBtns">
+                    <button class="gr-btn" data-mode="1" onclick="setGlobalRange(1,this)">24h</button>
+                    <button class="gr-btn active" data-mode="7" onclick="setGlobalRange(7,this)">7d</button>
+                    <button class="gr-btn" data-mode="14" onclick="setGlobalRange(14,this)">14d</button>
+                    <button class="gr-btn" data-mode="30" onclick="setGlobalRange(30,this)">1M</button>
+                    <button class="gr-btn" data-mode="0" onclick="setGlobalRange(0,this)">All</button>
+                    <button class="gr-btn" data-mode="custom" onclick="setGlobalRange('custom',this)">Custom</button>
+                </div>
+                <div class="inline-custom" id="globalCustomRange">
+                    <input type="date" id="globalFromDate" aria-label="From date">
+                    <span style="color:#64748b;">→</span>
+                    <input type="date" id="globalToDate" aria-label="To date">
+                    <button class="apply-btn" onclick="applyGlobalCustom()">Apply</button>
+                </div>
+            </div>
+
             <!-- Performance by Type -->
             <div class="section">
                 <h2>&#x1F4CA; Performance by Post Type</h2>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;" id="perfSnapshotBtns">
-                    <button class="tf-btn active" data-hours="24" onclick="switchTimeframe(24, this)" aria-label="View performance metrics for 24 hours">24h</button>
-                    <button class="tf-btn" data-hours="72" onclick="switchTimeframe(72, this)" aria-label="View performance metrics for 3 days">3 days</button>
-                    <button class="tf-btn" data-hours="168" onclick="switchTimeframe(168, this)" aria-label="View performance metrics for 7 days">7 days</button>
-                </div>
-                <div class="section-range" id="perfRangeBtns">
-                    <button class="tr-btn" onclick="setPerfRange('2w',this)">2W</button>
-                    <button class="tr-btn active" onclick="setPerfRange('1m',this)">1M</button>
-                    <button class="tr-btn" onclick="setPerfRange('custom',this)">Custom</button>
-                </div>
-                <div class="inline-custom" id="perfCustomRange">
-                    <input type="date" id="perfFromDate" aria-label="From date">
-                    <span style="color:#64748b;">→</span>
-                    <input type="date" id="perfToDate" aria-label="To date">
-                    <button class="apply-btn" onclick="applyPerfCustom()">Apply</button>
+                <div class="snapshot-row" id="perfSnapshotBtns">
+                    <span class="snapshot-label">Snapshot:</span>
+                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
+
+⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
+                    <button class="tf-btn active" data-hours="24" onclick="switchTimeframe(24, this)" aria-label="View performance at 24h snapshot">At 24h</button>
+                    <button class="tf-btn" data-hours="72" onclick="switchTimeframe(72, this)" aria-label="View performance at 3 day snapshot">At 3d</button>
+                    <button class="tf-btn" data-hours="168" onclick="switchTimeframe(168, this)" aria-label="View performance at 7 day snapshot">At 7d</button>
                 </div>
                 <table id="performanceTable">
                     <thead>
@@ -470,21 +577,14 @@
             <!-- Trends by Type -->
             <div class="section">
                 <h2>&#x1F4C8; Trends by Post Type</h2>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-                    <button class="tf-btn active" onclick="switchTrends(24, this)" aria-label="View trends for 24 hour snapshots">24h snapshots</button>
-                    <button class="tf-btn" onclick="switchTrends(72, this)" aria-label="View trends for 3 day snapshots">3d snapshots</button>
-                    <button class="tf-btn" onclick="switchTrends(168, this)" aria-label="View trends for 7 day snapshots">7d snapshots</button>
-                </div>
-                <div class="section-range">
-                    <button class="tr-btn" onclick="setTrendsRange('2w',this)">2W</button>
-                    <button class="tr-btn active" onclick="setTrendsRange('1m',this)">1M</button>
-                    <button class="tr-btn" onclick="setTrendsRange('custom',this)">Custom</button>
-                </div>
-                <div class="inline-custom" id="trendsCustomRange">
-                    <input type="date" id="trendsFromDate" aria-label="From date">
-                    <span style="color:#64748b;">→</span>
-                    <input type="date" id="trendsToDate" aria-label="To date">
-                    <button class="apply-btn" onclick="applyTrendsCustom()">Apply</button>
+                <div class="snapshot-row">
+                    <span class="snapshot-label">Snapshot:</span>
+                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
+
+⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
+                    <button class="tf-btn active" onclick="switchTrends(24, this)" aria-label="View trends at 24h snapshot">At 24h</button>
+                    <button class="tf-btn" onclick="switchTrends(72, this)" aria-label="View trends at 3 day snapshot">At 3d</button>
+                    <button class="tf-btn" onclick="switchTrends(168, this)" aria-label="View trends at 7 day snapshot">At 7d</button>
                 </div>
                 <div id="trendsChart" class="chart-container" aria-label="Trends by post type chart"></div>
             </div>
@@ -505,16 +605,12 @@
             <div class="section">
                 <h2>📉 Impression Decay</h2>
                 <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">How impressions accumulate — flattening = post stopped spreading</p>
-                <div class="section-range">
-                    <button class="tr-btn" onclick="setDecayRange('2w',this)">2W</button>
-                    <button class="tr-btn active" onclick="setDecayRange('1m',this)">1M</button>
-                    <button class="tr-btn" onclick="setDecayRange('custom',this)">Custom</button>
-                </div>
-                <div class="inline-custom" id="decayCustomRange">
-                    <input type="date" id="decayFromDate" aria-label="From date">
-                    <span style="color:#64748b;">→</span>
-                    <input type="date" id="decayToDate" aria-label="To date">
-                    <button class="apply-btn" onclick="applyDecayCustom()">Apply</button>
+                <div class="snapshot-row" id="decaySnapshotRow">
+                    <span class="snapshot-label">Snapshot:</span>
+                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
+
+⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
+                    <span style="color:#64748b;font-size:0.8rem;">Day 1 | Day 3 | Day 7</span>
                 </div>
                 <div id="decayChart" class="chart-container" aria-label="Impression decay curve by post type"></div>
             </div>
@@ -526,17 +622,6 @@
                     <button class="tf-btn active" onclick="setHeatmapFilter('all',this)">All</button>
                     <button class="tf-btn" onclick="setHeatmapFilter('post',this)">Posts</button>
                     <button class="tf-btn" onclick="setHeatmapFilter('reply',this)">Replies</button>
-                </div>
-                <div class="section-range">
-                    <button class="tr-btn" onclick="setHeatmapRange('2w',this)">2W</button>
-                    <button class="tr-btn active" onclick="setHeatmapRange('1m',this)">1M</button>
-                    <button class="tr-btn" onclick="setHeatmapRange('custom',this)">Custom</button>
-                </div>
-                <div class="inline-custom" id="heatmapCustomRange">
-                    <input type="date" id="heatmapFromDate" aria-label="From date">
-                    <span style="color:#64748b;">→</span>
-                    <input type="date" id="heatmapToDate" aria-label="To date">
-                    <button class="apply-btn" onclick="applyHeatmapCustom()">Apply</button>
                 </div>
                 <div id="heatmapChart" class="chart-container" aria-label="Hour by day heatmap of impressions"></div>
                 <p class="heatmap-note">Times in UTC</p>
@@ -559,133 +644,98 @@
         </footer>
     </div>
 
-    <script type="text/javascript">/* v5 */
+    <script type="text/javascript">/* v6 */
 
         // ═══════════════════════════════════════════════
-        //  PER-SECTION RANGE STATE
-        //  Each section tracks its own mode/dates.
+        //  GLOBAL DATE RANGE STATE
+        //  Single source of truth for tweet date filter.
+        //  All API calls use this.
         // ═══════════════════════════════════════════════
 
-        /** Create a fresh per-section range state, defaulting to 1m. */
-        function mkRange(defaultMode) {
-            return { mode: defaultMode || '1m', fromDate: null, toDate: null };
-        }
+        /**
+         * globalRange: {
+         *   mode: number|'custom'  — days (0=all, 1, 7, 14, 30) or 'custom'
+         *   fromDate: string|null  — ISO date YYYY-MM-DD (custom only)
+         *   toDate:   string|null  — ISO date YYYY-MM-DD (custom only)
+         * }
+         */
+        const globalRange = { mode: 7, fromDate: null, toDate: null };
 
-        const sectionRanges = {
-            stats:    mkRange('1m'),
-            perf:     mkRange('1m'),
-            trends:   mkRange('1m'),
-            decay:    mkRange('1m'),
-            heatmap:  mkRange('1m'),
-        };
-
-        /** Build query-string parameters from a section's range state. */
-        function buildQP(state) {
-            if (state.mode === 'custom' && state.fromDate && state.toDate) {
-                return `from_date=${state.fromDate}&to_date=${state.toDate}`;
+        /** Build query-string parameters from the global range state. */
+        function buildGlobalQP() {
+            if (globalRange.mode === 'custom' && globalRange.fromDate && globalRange.toDate) {
+                return `from_date=${globalRange.fromDate}&to_date=${globalRange.toDate}`;
             }
-            const days = state.mode === '2w' ? 14 : 30;
-            return `days=${days}`;
+            if (globalRange.mode === 0) return ''; // All = no filter
+            return `days=${globalRange.mode}`;
         }
 
-        /** Helper: toggle active on tr-btn siblings, show/hide inline-custom. */
-        function handleRangeBtn(btn, sectionState, customPanelId, onApply) {
-            btn.closest('.section-range').querySelectorAll('.tr-btn').forEach(b => b.classList.remove('active'));
+        function setGlobalRange(mode, btn) {
+            document.querySelectorAll('#globalRangeBtns .gr-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const panel = document.getElementById(customPanelId);
-            if (btn.textContent.trim() === 'Custom') {
-                panel.classList.add('visible');
-                // pre-fill dates if empty
-                const fromId = customPanelId.replace('CustomRange', 'FromDate');
-                const toId   = customPanelId.replace('CustomRange', 'ToDate');
-                const fromEl = document.getElementById(fromId);
-                const toEl   = document.getElementById(toId);
-                if (fromEl && !fromEl.value) {
-                    const to = new Date(); const from = new Date();
+            const customPanel = document.getElementById('globalCustomRange');
+            if (mode === 'custom') {
+                customPanel.classList.add('visible');
+                // Pre-fill dates if empty
+                const fromEl = document.getElementById('globalFromDate');
+                const toEl   = document.getElementById('globalToDate');
+                if (!fromEl.value) {
+                    const to = new Date(), from = new Date();
                     from.setDate(from.getDate() - 30);
                     fromEl.value = from.toISOString().slice(0,10);
                     toEl.value   = to.toISOString().slice(0,10);
                 }
                 // Don't reload yet — wait for Apply
             } else {
-                panel.classList.remove('visible');
-                sectionState.mode = btn.textContent.trim() === '2W' ? '2w' : '1m';
-                sectionState.fromDate = null;
-                sectionState.toDate   = null;
-                onApply();
+                customPanel.classList.remove('visible');
+                globalRange.mode     = mode;
+                globalRange.fromDate = null;
+                globalRange.toDate   = null;
+                reloadAll();
             }
         }
 
-        // ── Performance section range ──
-        function setPerfRange(mode, btn) {
-            handleRangeBtn(btn, sectionRanges.perf, 'perfCustomRange', reloadPerf);
-        }
-        function applyPerfCustom() {
-            const from = document.getElementById('perfFromDate').value;
-            const to   = document.getElementById('perfToDate').value;
+        function applyGlobalCustom() {
+            const from = document.getElementById('globalFromDate').value;
+            const to   = document.getElementById('globalToDate').value;
             if (!from || !to) { alert('Please select both dates.'); return; }
-            if (from > to)   { alert('From date must be before To date.'); return; }
-            sectionRanges.perf.mode     = 'custom';
-            sectionRanges.perf.fromDate = from;
-            sectionRanges.perf.toDate   = to;
-            reloadPerf();
+            if (from > to)    { alert('From date must be before To date.'); return; }
+            globalRange.mode     = 'custom';
+            globalRange.fromDate = from;
+            globalRange.toDate   = to;
+            reloadAll();
         }
+
+        // ── Section-level reload functions (use global range) ──
+
         async function reloadPerf() {
-            const qp = buildQP(sectionRanges.perf);
-            // Find currently active snapshot btn
-            const activeSnap = document.querySelector('#perfSnapshotBtns .tf-btn.active');
-            const hours = activeSnap ? parseInt(activeSnap.dataset.hours || '24', 10) : currentPerfHours;
+            const qp    = buildGlobalQP();
+            const hours = currentPerfHours;
+            const url   = `/api/performance/${hours}${qp ? '?' + qp : ''}`;
             try {
-                const data = await fetch(`/api/performance/${hours}?${qp}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
                 renderPerformanceTable(data);
             } catch(e) { console.error('reloadPerf failed', e); }
         }
 
-        // ── Trends section range ──
-        function setTrendsRange(mode, btn) {
-            handleRangeBtn(btn, sectionRanges.trends, 'trendsCustomRange', reloadTrends);
-        }
-        function applyTrendsCustom() {
-            const from = document.getElementById('trendsFromDate').value;
-            const to   = document.getElementById('trendsToDate').value;
-            if (!from || !to) { alert('Please select both dates.'); return; }
-            if (from > to)   { alert('From date must be before To date.'); return; }
-            sectionRanges.trends.mode     = 'custom';
-            sectionRanges.trends.fromDate = from;
-            sectionRanges.trends.toDate   = to;
-            reloadTrends();
-        }
         async function reloadTrends() {
-            const qp = buildQP(sectionRanges.trends);
+            const qp  = buildGlobalQP();
+            const url = `/api/trends/${currentTrendsHours}${qp ? '?' + qp : ''}`;
             try {
-                const data = await fetch(`/api/trends/${currentTrendsHours}?${qp}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
                 renderTrendsChart(data);
             } catch(e) { console.error('reloadTrends failed', e); }
         }
 
-        // ── Decay section range ──
-        function setDecayRange(mode, btn) {
-            handleRangeBtn(btn, sectionRanges.decay, 'decayCustomRange', reloadDecay);
-        }
-        function applyDecayCustom() {
-            const from = document.getElementById('decayFromDate').value;
-            const to   = document.getElementById('decayToDate').value;
-            if (!from || !to) { alert('Please select both dates.'); return; }
-            if (from > to)   { alert('From date must be before To date.'); return; }
-            sectionRanges.decay.mode     = 'custom';
-            sectionRanges.decay.fromDate = from;
-            sectionRanges.decay.toDate   = to;
-            reloadDecay();
-        }
         async function reloadDecay() {
-            const qp = buildQP(sectionRanges.decay);
+            const qp  = buildGlobalQP();
+            const url = `/api/decay-curve${qp ? '?' + qp : ''}`;
             try {
-                const data = await fetch(`/api/decay-curve?${qp}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
                 renderDecayChart(data);
             } catch(e) { console.error('reloadDecay failed', e); }
         }
 
-        // ── Heatmap section range + post-type filter ──
         let currentHeatmapFilter = 'all';
 
         function setHeatmapFilter(filter, btn) {
@@ -694,30 +744,65 @@
             currentHeatmapFilter = filter;
             reloadHeatmap();
         }
-        function setHeatmapRange(mode, btn) {
-            handleRangeBtn(btn, sectionRanges.heatmap, 'heatmapCustomRange', reloadHeatmap);
-        }
-        function applyHeatmapCustom() {
-            const from = document.getElementById('heatmapFromDate').value;
-            const to   = document.getElementById('heatmapToDate').value;
-            if (!from || !to) { alert('Please select both dates.'); return; }
-            if (from > to)   { alert('From date must be before To date.'); return; }
-            sectionRanges.heatmap.mode     = 'custom';
-            sectionRanges.heatmap.fromDate = from;
-            sectionRanges.heatmap.toDate   = to;
-            reloadHeatmap();
-        }
+
         async function reloadHeatmap() {
-            const qp = buildQP(sectionRanges.heatmap);
-            const filterParam = currentHeatmapFilter !== 'all' ? `&post_type_filter=${currentHeatmapFilter}` : '';
+            const qp          = buildGlobalQP();
+            const filterParam = currentHeatmapFilter !== 'all' ? `post_type_filter=${currentHeatmapFilter}` : '';
+            const params      = [qp, filterParam].filter(Boolean).join('&');
+            const url         = `/api/heatmap${params ? '?' + params : ''}`;
             try {
-                const data = await fetch(`/api/heatmap?${qp}${filterParam}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
                 renderHeatmap(data);
             } catch(e) { console.error('reloadHeatmap failed', e); }
         }
 
+        async function reloadHourlyDaily() {
+            const qp = buildGlobalQP();
+            const signal = AbortSignal.timeout(10000);
+            const [hourlyRes, dailyRes] = await Promise.allSettled([
+                fetch(`/api/hourly-performance${qp ? '?' + qp : ''}`, { signal }).then(r => r.json()),
+                fetch(`/api/daily-performance${qp ? '?' + qp : ''}`, { signal }).then(r => r.json()),
+            ]);
+            if (hourlyRes.status === 'fulfilled' && hourlyRes.value.length > 0) {
+                const hourlyFmt = hourlyRes.value.map(r => ({
+                    ...r, hour_label: String(r.hour_utc).padStart(2,'0') + ':00'
+                }));
+                renderBarChart('hourlyChart', hourlyFmt, 'hour_label', 'avg_impressions');
+            } else {
+                document.getElementById('hourlyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data for this date range.</p>';
+            }
+            if (dailyRes.status === 'fulfilled' && dailyRes.value.length > 0) {
+                renderBarChart('dailyChart', dailyRes.value, 'day_name', 'avg_impressions');
+            } else {
+                document.getElementById('dailyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data for this date range.</p>';
+            }
+        }
+
+        async function reloadStats() {
+            const qp = buildGlobalQP();
+            try {
+                const stats = await fetch(`/api/stats${qp ? '?' + qp : ''}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderStats(stats);
+            } catch(e) { console.error('reloadStats failed', e); }
+        }
+
+        async function reloadTopPosts() {
+            const qp = buildGlobalQP();
+            try {
+                const data = await fetch(`/api/top-posts?limit=10${qp ? '&' + qp : ''}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderTopPosts(data);
+            } catch(e) { console.error('reloadTopPosts failed', e); }
+        }
+
+        // ─── Info icon: close on outside click (mobile tap support) ───
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.info-icon')) {
+                document.querySelectorAll('.info-icon.open').forEach(el => el.classList.remove('open'));
+            }
+        });
+
         // ═══════════════════════════════════════════════
-        //  SHARED TOOLTIP
+        //  SHARED TOOLTIP (for SVG chart elements)
         // ═══════════════════════════════════════════════
         const tooltip = document.getElementById('cpTooltip');
         function showTooltip(e, text) {
@@ -732,31 +817,28 @@
         function hideTooltip() { tooltip.style.display = 'none'; }
 
         // ═══════════════════════════════════════════════
-        //  FETCH (stats only — sections load independently)
+        //  FETCH — all sections use global date range
         // ═══════════════════════════════════════════════
         async function fetchInitialData() {
             try {
                 const signal = AbortSignal.timeout(10000);
-                const qpStats   = buildQP(sectionRanges.stats);
-                const qpPerf    = buildQP(sectionRanges.perf);
-                const qpTrends  = buildQP(sectionRanges.trends);
+                const qp     = buildGlobalQP();
+                const qpStr  = qp ? '?' + qp : '';
 
                 // Core data — dashboard blocks on this
                 const [stats, performance, hourly, daily, topPosts, trends] = await Promise.all([
-                    fetch(`/api/stats?${qpStats}`,               { signal }).then(r => r.json()),
-                    fetch(`/api/performance/24?${qpPerf}`,        { signal }).then(r => r.json()),
-                    fetch(`/api/hourly-performance?days=30`,      { signal }).then(r => r.json()),
-                    fetch(`/api/daily-performance?days=30`,       { signal }).then(r => r.json()),
-                    fetch(`/api/top-posts?limit=10&${qpStats}`,   { signal }).then(r => r.json()),
-                    fetch(`/api/trends/24?${qpTrends}`,           { signal }).then(r => r.json()),
+                    fetch(`/api/stats${qpStr}`,                           { signal }).then(r => r.json()),
+                    fetch(`/api/performance/24${qpStr}`,                  { signal }).then(r => r.json()),
+                    fetch(`/api/hourly-performance${qpStr}`,              { signal }).then(r => r.json()),
+                    fetch(`/api/daily-performance${qpStr}`,               { signal }).then(r => r.json()),
+                    fetch(`/api/top-posts?limit=10${qp ? '&' + qp : ''}`, { signal }).then(r => r.json()),
+                    fetch(`/api/trends/24${qpStr}`,                       { signal }).then(r => r.json()),
                 ]);
 
-                // Decay + heatmap load independently — failures don't block the dashboard
-                const qpDecay   = buildQP(sectionRanges.decay);
-                const qpHeatmap = buildQP(sectionRanges.heatmap);
+                // Decay + heatmap load independently — failures don't block dashboard
                 const [decay, heatmap] = await Promise.allSettled([
-                    fetch(`/api/decay-curve?${qpDecay}`,  { signal }).then(r => r.json()),
-                    fetch(`/api/heatmap?${qpHeatmap}`,    { signal }).then(r => r.json()),
+                    fetch(`/api/decay-curve${qpStr}`,  { signal }).then(r => r.json()),
+                    fetch(`/api/heatmap${qpStr}`,      { signal }).then(r => r.json()),
                 ]);
 
                 return {
@@ -805,7 +887,7 @@
             currentPerfHours = hours;
             try {
                 const signal = AbortSignal.timeout(10000);
-                const data = await fetch(`/api/performance/${hours}?${buildQP(sectionRanges.perf)}`, { signal }).then(r => r.json());
+                const data = await fetch(`/api/performance/${hours}?${buildGlobalQP()}`, { signal }).then(r => r.json());
                 renderPerformanceTable(data);
             } catch(e) {
                 console.error('Failed to load timeframe:', e);
@@ -821,7 +903,7 @@
             currentTrendsHours = hours;
             try {
                 const signal = AbortSignal.timeout(10000);
-                const data = await fetch(`/api/trends/${hours}?${buildQP(sectionRanges.trends)}`, { signal }).then(r => r.json());
+                const data = await fetch(`/api/trends/${hours}?${buildGlobalQP()}`, { signal }).then(r => r.json());
                 renderTrendsChart(data);
             } catch(e) { console.error(e); }
         }

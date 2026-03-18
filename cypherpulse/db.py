@@ -125,17 +125,17 @@ def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
 
 
 def _date_filter_sql(
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     col: str = "p.posted_at",
 ) -> Tuple[str, tuple]:
     """Return (sql_where_fragment, params_tuple) for date filtering on a posted_at column.
 
-    Priority: from_date/to_date custom range > days rolling window.
+    Priority: from_date/to_date custom range > days rolling window > no filter.
 
     Args:
-        days: Rolling window in days (used when from_date/to_date are not provided)
+        days: Rolling window in days. None or 0 means no date filter (all tweets).
         from_date: ISO date string YYYY-MM-DD (inclusive lower bound)
         to_date: ISO date string YYYY-MM-DD (inclusive upper bound)
         col: SQL column reference, e.g. 'p.posted_at' or 'posted_at'
@@ -147,12 +147,14 @@ def _date_filter_sql(
         return f"date({col}) >= ? AND date({col}) <= ?", (from_date, to_date)
     elif from_date:
         return f"date({col}) >= ?", (from_date,)
-    else:
+    elif days:  # None, 0, or falsy → no date filter
         return f"{col} >= date('now', ?)", (f"-{days} days",)
+    else:
+        return "1=1", ()
 
 
 def get_stats(
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     db_path: Optional[str] = None,
@@ -204,7 +206,7 @@ def get_stats(
 
 def get_performance_by_type(
     snapshot_hours: int = 24,
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     db_path: Optional[str] = None,
@@ -245,7 +247,7 @@ def get_performance_by_type(
 
 def get_top_posts(
     limit: int = 10,
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     db_path: Optional[str] = None,
@@ -283,7 +285,7 @@ def get_top_posts(
 
 
 def get_hourly_performance(
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     db_path: Optional[str] = None,
@@ -321,7 +323,7 @@ def get_hourly_performance(
 
 
 def get_daily_performance(
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     db_path: Optional[str] = None,
@@ -367,7 +369,7 @@ def get_daily_performance(
 
 def get_trends_by_type(
     snapshot_hours: int = 24,
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     db_path: Optional[str] = None,
@@ -406,7 +408,7 @@ def get_trends_by_type(
 
 
 def get_decay_curve(
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     db_path: Optional[str] = None,
@@ -461,7 +463,7 @@ def get_decay_curve(
 
 
 def get_heatmap(
-    days: int = 30,
+    days: Optional[int] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     post_type_filter: Optional[str] = None,

@@ -54,7 +54,7 @@ async def root() -> Union[FileResponse, Dict[str, str]]:
 
 @app.get("/api/stats")
 async def api_stats(
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
@@ -69,7 +69,7 @@ async def api_stats(
 @app.get("/api/performance/{snapshot_hours}")
 async def api_performance(
     snapshot_hours: int,
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
@@ -87,7 +87,7 @@ async def api_performance(
 @app.get("/api/top-posts")
 async def api_top_posts(
     limit: int = Query(default=10, ge=1, le=100),
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
@@ -102,7 +102,7 @@ async def api_top_posts(
 
 @app.get("/api/hourly-performance")
 async def api_hourly(
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
@@ -117,7 +117,7 @@ async def api_hourly(
 
 @app.get("/api/daily-performance")
 async def api_daily(
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
@@ -133,7 +133,7 @@ async def api_daily(
 @app.get("/api/trends/{snapshot_hours}")
 async def api_trends(
     snapshot_hours: int,
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
@@ -150,7 +150,7 @@ async def api_trends(
 
 @app.get("/api/decay-curve")
 async def api_decay_curve(
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
@@ -169,7 +169,7 @@ async def api_decay_curve(
 
 @app.get("/api/heatmap")
 async def api_heatmap(
-    days: int = Query(default=30, ge=1, le=365),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
     from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
     post_type_filter: Optional[str] = Query(default=None, description="Filter: 'reply', 'post', or omit for all"),
