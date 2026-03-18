@@ -746,7 +746,7 @@
             const url         = `/api/heatmap${params ? '?' + params : ''}`;
             try {
                 const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
-                renderHeatmap(data);
+                renderHeatmap(data, currentHeatmapFilter);
             } catch(e) { console.error('reloadHeatmap failed', e); }
         }
 
@@ -1143,7 +1143,7 @@
         // ═══════════════════════════════════════════════
         //  RENDER: HEATMAP
         // ═══════════════════════════════════════════════
-        function renderHeatmap(rows) {
+        function renderHeatmap(rows, filter) {
             const el = document.getElementById('heatmapChart');
             if (!rows || rows.length === 0) {
                 el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No heatmap data yet.</p>';
@@ -1170,11 +1170,12 @@
 
             const maxVal = Math.max(...rows.map(r => r.avg_impressions || 0), 1);
 
-            // Colour interpolation: #e0f2fe → #0369a1
+            // Colour scale: replies = orange (#fff7ed → #c2410c), posts/all = blue (#e0f2fe → #0369a1)
+            const isReply = filter === 'reply';
             function heatColor(val) {
                 const t = val / maxVal;
-                const r1=224, g1=242, b1=254;
-                const r2=3,   g2=105, b2=161;
+                const r1 = isReply ? 255 : 224, g1 = isReply ? 247 : 242, b1 = isReply ? 237 : 254;
+                const r2 = isReply ? 194 : 3,   g2 = isReply ?  65 : 105, b2 = isReply ?  12 : 161;
                 const r = Math.round(r1 + (r2-r1)*t);
                 const g = Math.round(g1 + (g2-g1)*t);
                 const b = Math.round(b1 + (b2-b1)*t);
@@ -1312,7 +1313,7 @@
             }
 
             renderDecayChart(data.decay);
-            renderHeatmap(data.heatmap);
+            renderHeatmap(data.heatmap, currentHeatmapFilter);
             renderTopPosts(data.topPosts);
 
             document.getElementById('loading').classList.add('hidden');
@@ -1644,93 +1645,6 @@
         }
 
         // ═══════════════════════════════════════════════
-        //  RENDER: HEATMAP
-        // ═══════════════════════════════════════════════
-        function renderHeatmap(rows) {
-            const el = document.getElementById('heatmapChart');
-            if (!rows || rows.length === 0) {
-                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No heatmap data yet.</p>';
-                return;
-            }
-
-            const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const CELL = 26;
-            const GAP  = 2;
-            const LEFT_PAD = 36;
-            const TOP_PAD  = 22;
-            const HOURS = 24;
-            const DAYS  = 7;
-
-            const totalW = LEFT_PAD + HOURS * (CELL + GAP);
-            const totalH = TOP_PAD  + DAYS  * (CELL + GAP);
-
-            // Build lookup map
-            const map = {};
-            rows.forEach(r => {
-                if (!map[r.dow]) map[r.dow] = {};
-                map[r.dow][r.hour] = r;
-            });
-
-            const maxVal = Math.max(...rows.map(r => r.avg_impressions || 0), 1);
-
-            // Colour interpolation: #e0f2fe → #0369a1
-            function heatColor(val) {
-                const t = val / maxVal;
-                const r1=224, g1=242, b1=254;
-                const r2=3,   g2=105, b2=161;
-                const r = Math.round(r1 + (r2-r1)*t);
-                const g = Math.round(g1 + (g2-g1)*t);
-                const b = Math.round(b1 + (b2-b1)*t);
-                return `rgb(${r},${g},${b})`;
-            }
-
-            let cells = '';
-            let rowLabels = '';
-            let colLabels = '';
-
-            // Column labels (every 3h)
-            for (let h = 0; h < HOURS; h++) {
-                if (h % 3 === 0) {
-                    const x = LEFT_PAD + h * (CELL + GAP) + CELL / 2;
-                    colLabels += `<text x="${x}" y="14" text-anchor="middle" fill="#64748b" font-size="10">${String(h).padStart(2,'0')}</text>`;
-                }
-            }
-
-            for (let d = 0; d < DAYS; d++) {
-                const y = TOP_PAD + d * (CELL + GAP);
-                rowLabels += `<text x="${LEFT_PAD - 4}" y="${y + CELL/2 + 4}" text-anchor="end" fill="#94a3b8" font-size="10">${DAY_NAMES[d]}</text>`;
-
-                for (let h = 0; h < HOURS; h++) {
-                    const x = LEFT_PAD + h * (CELL + GAP);
-                    const cell = map[d] && map[d][h];
-                    const val  = cell ? (cell.avg_impressions || 0) : 0;
-                    const posts = cell ? cell.posts : 0;
-                    const color = val > 0 ? heatColor(val) : 'rgba(15,23,42,0.5)';
-                    const tipText = `${DAY_NAMES[d]} ${String(h).padStart(2,'0')}:00 — avg ${Math.round(val).toLocaleString()} impressions (${posts} post${posts !== 1 ? 's' : ''})`;
-
-                    cells += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="${color}"
-                        class="hm-cell" data-tip="${tipText}"/>`;
-                }
-            }
-
-            el.innerHTML = `
-                <div style="overflow-x:auto">
-                    <svg width="${totalW}" height="${totalH}" style="display:block;font-family:inherit">
-                        ${colLabels}
-                        ${rowLabels}
-                        ${cells}
-                    </svg>
-                </div>
-            `;
-
-            el.querySelectorAll('.hm-cell').forEach(cell => {
-                cell.addEventListener('mouseenter', e => showTooltip(e, cell.dataset.tip));
-                cell.addEventListener('mousemove', moveTooltip);
-                cell.addEventListener('mouseleave', hideTooltip);
-            });
-        }
-
-        // ═══════════════════════════════════════════════
         //  RENDER: TOP POSTS
         // ═══════════════════════════════════════════════
         function renderTopPosts(posts) {
@@ -1799,7 +1713,7 @@
             }
 
             renderDecayChart(data.decay);
-            renderHeatmap(data.heatmap);
+            renderHeatmap(data.heatmap, currentHeatmapFilter);
             renderTopPosts(data.topPosts);
 
             updateRefreshIndicator();
@@ -1830,7 +1744,7 @@
             }
 
             renderDecayChart(data.decay);
-            renderHeatmap(data.heatmap);
+            renderHeatmap(data.heatmap, currentHeatmapFilter);
             renderTopPosts(data.topPosts);
 
             document.getElementById('loading').classList.add('hidden');
