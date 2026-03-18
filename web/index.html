@@ -606,11 +606,13 @@
                 <h2>📉 Impression Decay</h2>
                 <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">How impressions accumulate — flattening = post stopped spreading</p>
                 <div class="snapshot-row" id="decaySnapshotRow">
-                    <span class="snapshot-label">Snapshot:</span>
+                    <span class="snapshot-label">Snapshots:</span>
                     <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
 
 ⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
-                    <span style="color:#64748b;font-size:0.8rem;">Day 1 | Day 3 | Day 7</span>
+                    <button class="tf-btn active" disabled>At 24h</button>
+                    <button class="tf-btn active" disabled>At 3d</button>
+                    <button class="tf-btn active" disabled>At 7d</button>
                 </div>
                 <div id="decayChart" class="chart-container" aria-label="Impression decay curve by post type"></div>
             </div>
@@ -851,6 +853,497 @@
                 return null;
             }
         }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: STATS
+        // ═══════════════════════════════════════════════
+        function renderStats(stats) {
+            document.getElementById('totalTweets').textContent = stats.total_tweets.toLocaleString();
+            document.getElementById('totalSnapshots').textContent = stats.total_snapshots.toLocaleString();
+            document.getElementById('avgImpressions').textContent = Math.round(stats.avg_impressions_24h).toLocaleString();
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: PERFORMANCE TABLE
+        // ═══════════════════════════════════════════════
+        function renderPerformanceTable(data) {
+            const tbody = document.querySelector('#performanceTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${row.post_type}</strong></td>
+                    <td>${row.posts}</td>
+                    <td>${row.avg_likes}</td>
+                    <td>${row.avg_replies}</td>
+                    <td>${row.avg_retweets}</td>
+                    <td>${Math.round(row.avg_impressions).toLocaleString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function switchTimeframe(hours, btn) {
+            btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPerfHours = hours;
+            reloadPerf();
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: TRENDS CHART
+        // ═══════════════════════════════════════════════
+        async function switchTrends(hours, btn) {
+            btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTrendsHours = hours;
+            reloadTrends();
+        }
+
+        function renderTrendsChart(rows) {
+            const el = document.getElementById('trendsChart');
+            if (!rows || rows.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No trend data yet — check back after snapshots are collected.</p>';
+                return;
+            }
+
+            const types = [...new Set(rows.map(r => r.post_type))];
+            const dates = [...new Set(rows.map(r => r.post_date))].sort();
+
+            const byType = {};
+            types.forEach(t => {
+                byType[t] = {};
+                rows.filter(r => r.post_type === t).forEach(r => { byType[t][r.post_date] = r; });
+            });
+
+            const maxImpr = Math.max(...rows.map(r => r.avg_impressions || 0), 1);
+            const barW = Math.max(8, Math.floor(560 / (dates.length * types.length + dates.length)));
+            const chartH = 200;
+
+            let bars = '';
+            let labels = '';
+            let legend = '';
+            const groupW = types.length * barW + 4;
+
+            dates.forEach((date, di) => {
+                const x0 = di * (groupW + 8);
+                types.forEach((type, ti) => {
+                    const d = byType[type][date];
+                    const val = d ? (d.avg_impressions || 0) : 0;
+                    const h = Math.max(2, Math.round((val / maxImpr) * chartH));
+                    const x = x0 + ti * barW;
+                    const color = typeColor(type);
+                    bars += `<rect x="${x}" y="${chartH - h}" width="${barW - 2}" height="${h}" fill="${color}" opacity="0.8" rx="2"><title>${type}: ${val} avg impressions on ${date}</title></rect>`;
+                });
+                const shortDate = date.slice(5);
+                labels += `<text x="${x0 + groupW/2}" y="${chartH + 16}" text-anchor="middle" fill="#64748b" font-size="10">${shortDate}</text>`;
+            });
+
+            types.forEach((type, i) => {
+                const color = typeColor(type);
+                legend += `<rect x="${i * 90}" y="0" width="10" height="10" fill="${color}" rx="2"/><text x="${i * 90 + 14}" y="9" fill="#94a3b8" font-size="12">${type}</text>`;
+            });
+
+            const svgW = Math.max(500, dates.length * (groupW + 8));
+            el.innerHTML = `<div style="overflow-x:auto"><svg width="${svgW}" height="${chartH + 40}" style="display:block">
+                <g transform="translate(10,8)">${bars}${labels}</g>
+                <g transform="translate(10,${chartH + 32})">${legend}</g>
+            </svg></div>`;
+        }
+
+        // ═══════════════════════════════════════════════
+        //  POST TYPE COLOURS
+        // ═══════════════════════════════════════════════
+        const TYPE_COLORS = {
+            'tweet':      '#3b82f6',
+            'post':       '#3b82f6',
+            'reply':      '#f59e0b',
+            'retweet':    '#10b981',
+            'quote':      '#8b5cf6',
+            'thread':     '#ec4899',
+            'spicy':      '#ef4444',
+            'trend':      '#06b6d4',
+            'trust_signal': '#a3e635',
+            'other':      '#64748b',
+        };
+        function typeColor(t) {
+            return TYPE_COLORS[t && t.toLowerCase()] || '#64748b';
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: STACKED BAR CHART (hourly / daily)
+        // ═══════════════════════════════════════════════
+        function renderBarChart(containerId, rows, labelKey, valueKey) {
+            const container = document.getElementById(containerId);
+            if (!rows || rows.length === 0) { container.innerHTML = '<p style="color:#64748b;font-size:13px;">No data yet.</p>'; return; }
+
+            const labelOrder = [];
+            const labelSeen = new Set();
+            rows.forEach(r => { const l = String(r[labelKey]); if (!labelSeen.has(l)) { labelOrder.push(l); labelSeen.add(l); } });
+            const types = [...new Set(rows.map(r => (r.post_type || 'other').toLowerCase()))].sort();
+
+            const map = {};
+            labelOrder.forEach(l => { map[l] = {}; });
+            rows.forEach(r => {
+                const l = String(r[labelKey]);
+                const t = (r.post_type || 'other').toLowerCase();
+                map[l][t] = (r[valueKey] || 0);
+            });
+
+            const totals = labelOrder.map(l => types.reduce((s, t) => s + (map[l][t] || 0), 0));
+            const maxTotal = Math.max(...totals, 1);
+
+            const legend = types.map(t =>
+                `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:11px;color:#94a3b8;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${typeColor(t)}"></span>${t}
+                </span>`
+            ).join('');
+
+            const chart = document.createElement('div');
+            chart.className = 'bar-chart';
+
+            labelOrder.forEach((axisLabel, i) => {
+                const total = totals[i];
+                const row = document.createElement('div');
+                row.className = 'bar-row';
+
+                let segments = '';
+                types.forEach(t => {
+                    const val = map[axisLabel][t] || 0;
+                    if (val <= 0) return;
+                    const pct = (val / maxTotal) * 100;
+                    const segLabel = (pct > 2.5 && val >= 1)
+                        ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;">${Math.round(val).toLocaleString()}</span>`
+                        : '';
+                    segments += `<div title="${t}: ${Math.round(val).toLocaleString()} avg ${valueKey.replace('avg_','')}"
+                        style="width:${pct}%;background:${typeColor(t)};height:100%;display:inline-block;position:relative;">${segLabel}</div>`;
+                });
+
+                row.innerHTML = `
+                    <div class="bar-label">${axisLabel}</div>
+                    <div class="bar-track" style="padding:0;overflow:hidden;display:flex;align-items:stretch;">
+                        ${segments}
+                        <span class="bar-value" style="position:static;padding-left:6px;color:#94a3b8;">${Math.round(total).toLocaleString()}</span>
+                    </div>
+                `;
+                chart.appendChild(row);
+            });
+
+            const legendEl = document.createElement('div');
+            legendEl.style.cssText = 'margin-top:8px;';
+            legendEl.innerHTML = legend;
+
+            container.innerHTML = '';
+            container.appendChild(chart);
+            container.appendChild(legendEl);
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: IMPRESSION DECAY CURVE
+        // ═══════════════════════════════════════════════
+        function renderDecayChart(rows) {
+            const el = document.getElementById('decayChart');
+            if (!rows || rows.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No decay data yet — tweets need snapshots at 24h, 72h, and 7d.</p>';
+                return;
+            }
+
+            const PAD_L = 55, PAD_T = 16, PAD_R = 20, PAD_B = 30;
+            const W = 520, H = 220;
+            const innerW = W - PAD_L - PAD_R;
+            const innerH = H - PAD_T - PAD_B;
+
+            // X positions for 3 checkpoints
+            const xPoints = [0, innerW / 2, innerW];
+            // Labels: Day 1 | Day 3 | Day 7
+            const xLabels = ['Day 1', 'Day 3', 'Day 7'];
+
+            // Y scale
+            const allVals = rows.flatMap(r => [r.h24, r.h72, r.h168].filter(v => v != null));
+            const maxV = Math.max(...allVals, 1);
+
+            function yPos(v) { return innerH - Math.round((v / maxV) * innerH); }
+
+            let lines = '';
+            let dots  = '';
+            let gridLines = '';
+
+            // Y grid lines (4 steps)
+            for (let i = 0; i <= 4; i++) {
+                const v = Math.round((maxV / 4) * i);
+                const y = yPos(v);
+                gridLines += `<line x1="0" y1="${y}" x2="${innerW}" y2="${y}" stroke="rgba(148,163,184,0.1)" stroke-dasharray="3,3"/>`;
+                gridLines += `<text x="-6" y="${y + 4}" text-anchor="end" fill="#64748b" font-size="10">${v.toLocaleString()}</text>`;
+            }
+
+            // Arrow annotation: "↓ flattening = viral post" near top-right
+            const annotX = innerW - 90;
+            const annotY = 10;
+            const annotation = `<text x="${annotX}" y="${annotY}" fill="#64748b" font-size="9" font-style="italic">↓ line going flat = post stopped spreading</text>`;
+
+            rows.forEach(row => {
+                const vals = [row.h24, row.h72, row.h168];
+                const color = typeColor(row.post_type);
+
+                // Tooltip also shows decay deltas
+                const d24_72  = row.decay_24_72  != null ? `  Δ Day1→Day3: ${row.decay_24_72 >= 0 ? '+' : ''}${row.decay_24_72}` : '';
+                const d72_168 = row.decay_72_168 != null ? `  Δ Day3→Day7: ${row.decay_72_168 >= 0 ? '+' : ''}${row.decay_72_168}` : '';
+
+                // Build line path only between non-null checkpoints
+                const pts = vals.map((v, i) => v != null ? { x: xPoints[i], y: yPos(v), v } : null);
+                let d = '';
+                pts.forEach((p) => {
+                    if (!p) return;
+                    d += (d === '' ? 'M' : 'L') + `${p.x},${p.y}`;
+                });
+                if (d) {
+                    lines += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" opacity="0.9"/>`;
+                }
+
+                pts.forEach((p, i) => {
+                    if (!p) return;
+                    const snapLabel = xLabels[i];
+                    const label = `${row.post_type} @ ${snapLabel}: ${Math.round(p.v).toLocaleString()} avg impressions (n=${row.count})${i > 0 ? (i === 1 ? d24_72 : d72_168) : ''}`;
+                    dots += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${color}" stroke="#0f172a" stroke-width="1.5"
+                        class="decay-dot" data-tip="${label}"/>`;
+                });
+            });
+
+            // X axis labels
+            let xAxisLabels = xLabels.map((lbl, i) =>
+                `<text x="${xPoints[i]}" y="${innerH + 20}" text-anchor="middle" fill="#94a3b8" font-size="12">${lbl}</text>`
+            ).join('');
+
+            el.innerHTML = `
+                <div style="overflow-x:auto">
+                    <svg width="${W}" height="${H}" style="display:block;font-family:inherit">
+                        <g transform="translate(${PAD_L},${PAD_T})">
+                            ${gridLines}
+                            ${annotation}
+                            ${lines}
+                            ${dots}
+                            ${xAxisLabels}
+                        </g>
+                    </svg>
+                </div>
+                <div class="decay-legend" id="decayLegend"></div>
+            `;
+
+            // Legend shows decay delta summary
+            const legendEl = document.getElementById('decayLegend');
+            rows.forEach(row => {
+                const item = document.createElement('div');
+                item.className = 'decay-legend-item';
+                const d1 = row.decay_24_72  != null ? ` Δ1→3: ${row.decay_24_72}` : '';
+                const d2 = row.decay_72_168 != null ? ` Δ3→7: ${row.decay_72_168}` : '';
+                item.innerHTML = `<span style="display:inline-block;width:12px;height:3px;border-radius:2px;background:${typeColor(row.post_type)}"></span>${row.post_type} (n=${row.count})${d1}${d2}`;
+                legendEl.appendChild(item);
+            });
+
+            // Attach tooltip events to dots
+            el.querySelectorAll('.decay-dot').forEach(dot => {
+                dot.addEventListener('mouseenter', e => showTooltip(e, dot.dataset.tip));
+                dot.addEventListener('mousemove', moveTooltip);
+                dot.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: HEATMAP
+        // ═══════════════════════════════════════════════
+        function renderHeatmap(rows) {
+            const el = document.getElementById('heatmapChart');
+            if (!rows || rows.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No heatmap data yet.</p>';
+                return;
+            }
+
+            const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const CELL = 26;
+            const GAP  = 2;
+            const LEFT_PAD = 36;
+            const TOP_PAD  = 22;
+            const HOURS = 24;
+            const DAYS  = 7;
+
+            const totalW = LEFT_PAD + HOURS * (CELL + GAP);
+            const totalH = TOP_PAD  + DAYS  * (CELL + GAP);
+
+            // Build lookup map
+            const map = {};
+            rows.forEach(r => {
+                if (!map[r.dow]) map[r.dow] = {};
+                map[r.dow][r.hour] = r;
+            });
+
+            const maxVal = Math.max(...rows.map(r => r.avg_impressions || 0), 1);
+
+            // Colour interpolation: #e0f2fe → #0369a1
+            function heatColor(val) {
+                const t = val / maxVal;
+                const r1=224, g1=242, b1=254;
+                const r2=3,   g2=105, b2=161;
+                const r = Math.round(r1 + (r2-r1)*t);
+                const g = Math.round(g1 + (g2-g1)*t);
+                const b = Math.round(b1 + (b2-b1)*t);
+                return `rgb(${r},${g},${b})`;
+            }
+
+            let cells = '';
+            let rowLabels = '';
+            let colLabels = '';
+
+            // Column labels (every 3h)
+            for (let h = 0; h < HOURS; h++) {
+                if (h % 3 === 0) {
+                    const x = LEFT_PAD + h * (CELL + GAP) + CELL / 2;
+                    colLabels += `<text x="${x}" y="14" text-anchor="middle" fill="#64748b" font-size="10">${String(h).padStart(2,'0')}</text>`;
+                }
+            }
+
+            for (let d = 0; d < DAYS; d++) {
+                const y = TOP_PAD + d * (CELL + GAP);
+                rowLabels += `<text x="${LEFT_PAD - 4}" y="${y + CELL/2 + 4}" text-anchor="end" fill="#94a3b8" font-size="10">${DAY_NAMES[d]}</text>`;
+
+                for (let h = 0; h < HOURS; h++) {
+                    const x = LEFT_PAD + h * (CELL + GAP);
+                    const cell = map[d] && map[d][h];
+                    const val  = cell ? (cell.avg_impressions || 0) : 0;
+                    const posts = cell ? cell.posts : 0;
+                    const color = val > 0 ? heatColor(val) : 'rgba(15,23,42,0.5)';
+                    const tipText = `${DAY_NAMES[d]} ${String(h).padStart(2,'0')}:00 — avg ${Math.round(val).toLocaleString()} impressions (${posts} post${posts !== 1 ? 's' : ''})`;
+
+                    cells += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="${color}"
+                        class="hm-cell" data-tip="${tipText}"/>`;
+                }
+            }
+
+            el.innerHTML = `
+                <div style="overflow-x:auto">
+                    <svg width="${totalW}" height="${totalH}" style="display:block;font-family:inherit">
+                        ${colLabels}
+                        ${rowLabels}
+                        ${cells}
+                    </svg>
+                </div>
+            `;
+
+            el.querySelectorAll('.hm-cell').forEach(cell => {
+                cell.addEventListener('mouseenter', e => showTooltip(e, cell.dataset.tip));
+                cell.addEventListener('mousemove', moveTooltip);
+                cell.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: TOP POSTS
+        // ═══════════════════════════════════════════════
+        function renderTopPosts(posts) {
+            const container = document.getElementById('topPosts');
+            container.innerHTML = '';
+
+            posts.forEach((post) => {
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                
+                const postType = document.createElement('span');
+                postType.className = 'post-type';
+                postType.textContent = post.post_type;
+                
+                const metrics = document.createElement('div');
+                metrics.className = 'post-metrics';
+                metrics.innerHTML = `
+                    <span>👁️ ${post.impressions.toLocaleString()}</span>
+                    <span>❤️ ${post.likes}</span>
+                    <span>🔁 ${post.retweets}</span>
+                `;
+                
+                const header = document.createElement('div');
+                header.className = 'post-header';
+                header.appendChild(postType);
+                header.appendChild(metrics);
+                
+                const text = document.createElement('div');
+                text.className = 'post-text';
+                text.textContent = post.tweet_text || 'No text available';
+                
+                card.appendChild(header);
+                card.appendChild(text);
+                container.appendChild(card);
+            });
+        }
+
+        // ═══════════════════════════════════════════════
+        //  INIT + RELOAD
+        // ═══════════════════════════════════════════════
+        let currentTrendsHours = 24;
+        let currentPerfHours   = 24;
+
+        async function reloadAll() {
+            await Promise.all([
+                reloadStats(),
+                reloadPerf(),
+                reloadTrends(),
+                reloadDecay(),
+                reloadHeatmap(),
+                reloadHourlyDaily(),
+                reloadTopPosts(),
+            ]);
+            updateRefreshIndicator();
+        }
+
+        async function init() {
+            const data = await fetchInitialData();
+
+            if (!data) {
+                document.getElementById('loading').innerHTML = '<p style="color: #ef4444;">Failed to load data. Make sure the API is running.</p>';
+                return;
+            }
+
+            renderStats(data.stats);
+            renderPerformanceTable(data.performance);
+            renderTrendsChart(data.trends);
+
+            if (data.hourly.length > 0) {
+                const hourlyFmt = data.hourly.map(r => ({
+                    ...r, hour_label: String(r.hour_utc).padStart(2,'0') + ':00'
+                }));
+                renderBarChart('hourlyChart', hourlyFmt, 'hour_label', 'avg_impressions');
+            } else {
+                document.getElementById('hourlyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data yet.</p>';
+            }
+
+            if (data.daily.length > 0) {
+                renderBarChart('dailyChart', data.daily, 'day_name', 'avg_impressions');
+            } else {
+                document.getElementById('dailyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data yet.</p>';
+            }
+
+            renderDecayChart(data.decay);
+            renderHeatmap(data.heatmap);
+            renderTopPosts(data.topPosts);
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+
+            updateRefreshIndicator();
+        }
+
+        function updateRefreshIndicator() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const indicator = document.getElementById('refreshIndicator');
+            if (indicator) {
+                indicator.textContent = `Last updated: ${timeStr} • Auto-refresh every 5 minutes`;
+            }
+        }
+
+        // Initialize on load
+        init();
+
+        // Auto-refresh every 5 minutes
+        setInterval(() => reloadAll(), 5 * 60 * 1000);
+    </script>
 
         // ═══════════════════════════════════════════════
         //  RENDER: STATS
