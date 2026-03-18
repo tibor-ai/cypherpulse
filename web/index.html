@@ -267,6 +267,197 @@
             font-size: 0.875rem;
         }
 
+        /* ─── Global date range bar ─── */
+        .global-range-bar {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 10px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .global-range-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+        .global-range-btns {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .gr-btn {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #94a3b8;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .gr-btn:hover { border-color: rgba(59,130,246,0.5); color: #e2e8f0; }
+        .gr-btn.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; color: #93c5fd; }
+
+        /* Custom date inputs (global + per-section) */
+        .inline-custom {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+        .inline-custom.visible { display: flex; }
+        .inline-custom input[type="date"] {
+            background: rgba(15,23,42,0.7);
+            border: 1px solid rgba(148,163,184,0.3);
+            color: #e2e8f0;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.825rem;
+        }
+        .inline-custom input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.7);
+        }
+        .apply-btn {
+            background: rgba(59,130,246,0.2);
+            border: 1px solid #3b82f6;
+            color: #93c5fd;
+            padding: 5px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.825rem;
+        }
+        .apply-btn:hover { background: rgba(59,130,246,0.35); }
+
+        /* ─── ⓘ Tooltip ─── */
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(148,163,184,0.15);
+            color: #64748b;
+            font-size: 11px;
+            font-style: normal;
+            font-weight: 700;
+            cursor: pointer;
+            position: relative;
+            line-height: 1;
+            user-select: none;
+            vertical-align: middle;
+            margin-left: 4px;
+            flex-shrink: 0;
+        }
+        .info-icon:hover { background: rgba(59,130,246,0.25); color: #93c5fd; }
+        .info-icon .info-tip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.5;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 280px;
+            width: max-content;
+            white-space: pre-line;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            border: 1px solid rgba(148,163,184,0.15);
+        }
+        .info-icon .info-tip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+        }
+        .info-icon:hover .info-tip,
+        .info-icon.open .info-tip {
+            display: block;
+        }
+
+        /* Per-section snapshot controls */
+        .snapshot-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .snapshot-label {
+            color: #64748b;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Heatmap filter toggles */
+        .heatmap-filter {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        /* SVG tooltip */
+        .cp-tooltip {
+            position: fixed;
+            background: rgba(15,23,42,0.95);
+            border: 1px solid rgba(59,130,246,0.4);
+            color: #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 9999;
+            white-space: nowrap;
+            display: none;
+        }
+
+        /* Heatmap */
+        .heatmap-note {
+            color: #64748b;
+            font-size: 0.8rem;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Decay chart */
+        .decay-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .decay-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
         @media (max-width: 400px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -319,6 +510,7 @@
         </div>
 
         <div id="dashboard" class="hidden">
+
             <!-- Summary Stats -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -335,13 +527,37 @@
                 </div>
             </div>
 
+            <!-- Global Date Range Bar -->
+            <div class="global-range-bar" id="globalRangeBar">
+                <span class="global-range-label">Tweet date range:</span>
+                <span class="info-icon" id="globalRangeInfo" onclick="this.classList.toggle('open')" aria-label="About date range filter">ⓘ<span class="info-tip">Filters which tweets are included based on when they were posted. For example, '7d' shows only tweets posted in the last 7 days.</span></span>
+                <div class="global-range-btns" id="globalRangeBtns">
+                    <button class="gr-btn" data-mode="1" onclick="setGlobalRange(1,this)">24h</button>
+                    <button class="gr-btn active" data-mode="7" onclick="setGlobalRange(7,this)">7d</button>
+                    <button class="gr-btn" data-mode="14" onclick="setGlobalRange(14,this)">14d</button>
+                    <button class="gr-btn" data-mode="30" onclick="setGlobalRange(30,this)">1M</button>
+                    <button class="gr-btn" data-mode="0" onclick="setGlobalRange(0,this)">All</button>
+                    <button class="gr-btn" data-mode="custom" onclick="setGlobalRange('custom',this)">Custom</button>
+                </div>
+                <div class="inline-custom" id="globalCustomRange">
+                    <input type="date" id="globalFromDate" aria-label="From date">
+                    <span style="color:#64748b;">→</span>
+                    <input type="date" id="globalToDate" aria-label="To date">
+                    <button class="apply-btn" onclick="applyGlobalCustom()">Apply</button>
+                </div>
+            </div>
+
             <!-- Performance by Type -->
             <div class="section">
                 <h2>&#x1F4CA; Performance by Post Type</h2>
-                <div style="display:flex;gap:8px;margin-bottom:16px;">
-                    <button class="tf-btn active" onclick="switchTimeframe(24, this)" aria-label="View performance metrics for 24 hours">24h</button>
-                    <button class="tf-btn" onclick="switchTimeframe(72, this)" aria-label="View performance metrics for 3 days">3 days</button>
-                    <button class="tf-btn" onclick="switchTimeframe(168, this)" aria-label="View performance metrics for 7 days">7 days</button>
+                <div class="snapshot-row" id="perfSnapshotBtns">
+                    <span class="snapshot-label">Snapshot:</span>
+                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
+
+⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
+                    <button class="tf-btn active" data-hours="24" onclick="switchTimeframe(24, this)" aria-label="View performance at 24h snapshot">At 24h</button>
+                    <button class="tf-btn" data-hours="72" onclick="switchTimeframe(72, this)" aria-label="View performance at 3 day snapshot">At 3d</button>
+                    <button class="tf-btn" data-hours="168" onclick="switchTimeframe(168, this)" aria-label="View performance at 7 day snapshot">At 7d</button>
                 </div>
                 <table id="performanceTable">
                     <thead>
@@ -361,10 +577,14 @@
             <!-- Trends by Type -->
             <div class="section">
                 <h2>&#x1F4C8; Trends by Post Type</h2>
-                <div style="display:flex;gap:8px;margin-bottom:16px;">
-                    <button class="tf-btn active" onclick="switchTrends(24, this)" aria-label="View trends for 24 hour snapshots">24h snapshots</button>
-                    <button class="tf-btn" onclick="switchTrends(72, this)" aria-label="View trends for 3 day snapshots">3d snapshots</button>
-                    <button class="tf-btn" onclick="switchTrends(168, this)" aria-label="View trends for 7 day snapshots">7d snapshots</button>
+                <div class="snapshot-row">
+                    <span class="snapshot-label">Snapshot:</span>
+                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
+
+⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
+                    <button class="tf-btn active" onclick="switchTrends(24, this)" aria-label="View trends at 24h snapshot">At 24h</button>
+                    <button class="tf-btn" onclick="switchTrends(72, this)" aria-label="View trends at 3 day snapshot">At 3d</button>
+                    <button class="tf-btn" onclick="switchTrends(168, this)" aria-label="View trends at 7 day snapshot">At 7d</button>
                 </div>
                 <div id="trendsChart" class="chart-container" aria-label="Trends by post type chart"></div>
             </div>
@@ -381,6 +601,95 @@
                 <div id="dailyChart" class="chart-container" aria-label="Daily performance chart"></div>
             </div>
 
+            <!-- Impression Decay Curve -->
+            <div class="section">
+                <h2>📉 Impression Decay</h2>
+                <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">How impressions accumulate — flattening = post stopped spreading</p>
+
+                <div id="decayChart" class="chart-container" aria-label="Impression decay curve by post type"></div>
+            </div>
+
+            <!-- Hour × Day Heatmap -->
+            <div class="section">
+                <h2>🔥 Best Time to Post</h2>
+                <div class="heatmap-filter">
+                    <button class="tf-btn active" onclick="setHeatmapFilter('all',this)">All</button>
+                    <button class="tf-btn" onclick="setHeatmapFilter('post',this)">Posts</button>
+                    <button class="tf-btn" onclick="setHeatmapFilter('reply',this)">Replies</button>
+                </div>
+                <div id="heatmapChart" class="chart-container" aria-label="Hour by day heatmap of impressions"></div>
+                <p class="heatmap-note">Times in UTC</p>
+            </div>
+
+            <!-- Word Bubble Chart -->
+            <div class="section">
+                <h2>☁️ Word Bubble Chart</h2>
+                <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">Words sized by average 24h impressions — based on tweet text in the selected date range</p>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                    <div>
+                        <button class="tf-btn active" onclick="setWordBubbleMode('words',this)" aria-label="Show single words">Words</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('pairs',this)" aria-label="Show word pairs (PMI bigrams)">Bigrams</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('trigrams',this)" aria-label="Show word trigrams (PMI trigrams)">Trigrams</button>
+                        <button class="tf-btn" onclick="setWordBubbleMode('all',this)" aria-label="Show words, pairs, and trigrams together">All</button>
+                    </div>
+                    <label style="color:#94a3b8;font-size:0.875rem;">Min. tweets:
+                        <input type="number" id="wordBubbleMinTweets" value="2" min="2" max="20"
+                            style="width:60px;margin-left:6px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                                   color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:0.875rem;"
+                            onchange="reloadWordBubbles(); if(_benchmarkHandle && _cachedBenchmarkTweets) _rescoreBenchmark();">
+                        <span id="minTweetsNote" style="margin-left:6px;font-size:0.75rem;color:#64748b;">(pairs require ≥ 2)</span>
+                    </label>
+                </div>
+
+                <!-- Benchmark input -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                    <span style="color:#94a3b8;font-size:0.875rem;">@</span>
+                    <input type="text" id="benchmarkHandle" placeholder="e.g. levelsio" maxlength="50"
+                        style="flex:1;min-width:140px;max-width:260px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                               color:#e2e8f0;border-radius:6px;padding:5px 10px;font-size:0.875rem;"
+                        onkeydown="if(event.key==='Enter')runBenchmark()">
+                    <label style="color:#94a3b8;font-size:0.875rem;white-space:nowrap;">
+                        Tweets:
+                        <select id="benchmarkMaxTweets"
+                            style="margin-left:4px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                                   color:#e2e8f0;border-radius:6px;padding:4px 6px;font-size:0.875rem;">
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200" selected>200</option>
+                            <option value="500">500</option>
+                            <option value="1000">1,000</option>
+                            <option value="5000">5,000</option>
+                        </select>
+                    </label>
+                    <button id="benchmarkBtn" class="tf-btn" onclick="runBenchmark()"
+                        style="background:rgba(59,130,246,0.2);border-color:rgba(59,130,246,0.5);">Compare</button>
+                    <button class="tf-btn" onclick="clearBenchmark()">Clear</button>
+                </div>
+                <div id="benchmarkMsg" style="font-size:0.8rem;color:#f87171;margin-bottom:8px;display:none;"></div>
+
+                <!-- Chart area: single or dual side-by-side -->
+                <div id="wordBubbleChartsWrapper" style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <div id="wordBubbleChartOuter" style="flex:1;min-width:260px;">
+                        <h3 id="wordBubbleYourTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;display:none;">Your tweets</h3>
+                        <div id="wordBubbleChart"></div>
+                        <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('own')">⬇ Download CSV</button>
+                            <button class="tf-btn" style="font-size:0.8rem;" id="copyOwnBtn" onclick="copyWordBubbleCSV('own')">⎘ Copy</button>
+                        </div>
+                    </div>
+                    <div id="wordBubbleBenchmarkOuter" style="flex:1;min-width:260px;display:none;">
+                        <h3 id="wordBubbleBenchmarkTitle" style="font-size:0.85rem;color:#64748b;margin:0 0 6px 0;"></h3>
+                        <div id="wordBubbleChartBenchmark"></div>
+                        <div id="wordBubbleChartBenchmarkLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <button class="tf-btn" style="font-size:0.8rem;" onclick="downloadWordBubbleCSV('benchmark')">⬇ Download CSV</button>
+                            <button class="tf-btn" style="font-size:0.8rem;" id="copyBenchmarkBtn" onclick="copyWordBubbleCSV('benchmark')">⎘ Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Top Posts -->
             <div class="section">
                 <h2>🏆 Top 10 Posts by Impressions</h2>
@@ -390,45 +699,669 @@
 
         <div id="refreshIndicator" class="refresh-indicator"></div>
 
+        <!-- Shared tooltip element -->
+        <div class="cp-tooltip" id="cpTooltip"></div>
+
         <footer>
-            <p>CypherPulse v0.1.0 • Open Source Twitter Analytics</p>
+            <p>CypherPulse <span id="appVersion">v0.2.0</span> • Open Source Twitter Analytics</p>
         </footer>
     </div>
 
-    <script type="text/javascript">/* v3 */
-        async function fetchData() {
+    <script type="text/javascript">/* v6 */
+
+        // ═══════════════════════════════════════════════
+        //  GLOBAL DATE RANGE STATE
+        //  Single source of truth for tweet date filter.
+        //  All API calls use this.
+        // ═══════════════════════════════════════════════
+
+        /**
+         * globalRange: {
+         *   mode: number|'custom'  — days (0=all, 1, 7, 14, 30) or 'custom'
+         *   fromDate: string|null  — ISO date YYYY-MM-DD (custom only)
+         *   toDate:   string|null  — ISO date YYYY-MM-DD (custom only)
+         * }
+         */
+        const globalRange = { mode: 7, fromDate: null, toDate: null };
+
+        /** Build query-string parameters from the global range state. */
+        function buildGlobalQP() {
+            if (globalRange.mode === 'custom' && globalRange.fromDate && globalRange.toDate) {
+                return `from_date=${globalRange.fromDate}&to_date=${globalRange.toDate}`;
+            }
+            if (globalRange.mode === 0) return ''; // All = no filter
+            return `days=${globalRange.mode}`;
+        }
+
+        function setGlobalRange(mode, btn) {
+            document.querySelectorAll('#globalRangeBtns .gr-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const customPanel = document.getElementById('globalCustomRange');
+            if (mode === 'custom') {
+                customPanel.classList.add('visible');
+                // Pre-fill dates if empty
+                const fromEl = document.getElementById('globalFromDate');
+                const toEl   = document.getElementById('globalToDate');
+                if (!fromEl.value) {
+                    const to = new Date(), from = new Date();
+                    from.setDate(from.getDate() - 30);
+                    fromEl.value = from.toISOString().slice(0,10);
+                    toEl.value   = to.toISOString().slice(0,10);
+                }
+                // Don't reload yet — wait for Apply
+            } else {
+                customPanel.classList.remove('visible');
+                globalRange.mode     = mode;
+                globalRange.fromDate = null;
+                globalRange.toDate   = null;
+                reloadAll();
+            }
+        }
+
+        function applyGlobalCustom() {
+            const from = document.getElementById('globalFromDate').value;
+            const to   = document.getElementById('globalToDate').value;
+            if (!from || !to) { alert('Please select both dates.'); return; }
+            if (from > to)    { alert('From date must be before To date.'); return; }
+            globalRange.mode     = 'custom';
+            globalRange.fromDate = from;
+            globalRange.toDate   = to;
+            reloadAll();
+        }
+
+        // ── Section-level reload functions (use global range) ──
+
+        async function reloadPerf() {
+            const qp    = buildGlobalQP();
+            const hours = currentPerfHours;
+            const url   = `/api/performance/${hours}${qp ? '?' + qp : ''}`;
+            try {
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderPerformanceTable(data);
+            } catch(e) { console.error('reloadPerf failed', e); }
+        }
+
+        async function reloadTrends() {
+            const qp  = buildGlobalQP();
+            const url = `/api/trends/${currentTrendsHours}${qp ? '?' + qp : ''}`;
+            try {
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderTrendsChart(data);
+            } catch(e) { console.error('reloadTrends failed', e); }
+        }
+
+        async function reloadDecay() {
+            const qp  = buildGlobalQP();
+            const url = `/api/decay-curve${qp ? '?' + qp : ''}`;
+            try {
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderDecayChart(data);
+            } catch(e) { console.error('reloadDecay failed', e); }
+        }
+
+        let currentHeatmapFilter = 'all';
+
+        function setHeatmapFilter(filter, btn) {
+            btn.closest('.heatmap-filter').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentHeatmapFilter = filter;
+            reloadHeatmap();
+        }
+
+        async function reloadHeatmap() {
+            const qp          = buildGlobalQP();
+            const filterParam = currentHeatmapFilter !== 'all' ? `post_type_filter=${currentHeatmapFilter}` : '';
+            const params      = [qp, filterParam].filter(Boolean).join('&');
+            const url         = `/api/heatmap${params ? '?' + params : ''}`;
+            try {
+                const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderHeatmap(data, currentHeatmapFilter);
+            } catch(e) { console.error('reloadHeatmap failed', e); }
+        }
+
+        async function reloadHourlyDaily() {
+            const qp = buildGlobalQP();
+            const signal = AbortSignal.timeout(10000);
+            const [hourlyRes, dailyRes] = await Promise.allSettled([
+                fetch(`/api/hourly-performance${qp ? '?' + qp : ''}`, { signal }).then(r => r.json()),
+                fetch(`/api/daily-performance${qp ? '?' + qp : ''}`, { signal }).then(r => r.json()),
+            ]);
+            if (hourlyRes.status === 'fulfilled' && hourlyRes.value.length > 0) {
+                const hourlyFmt = hourlyRes.value.map(r => ({
+                    ...r, hour_label: String(r.hour_utc).padStart(2,'0') + ':00'
+                }));
+                renderBarChart('hourlyChart', hourlyFmt, 'hour_label', 'avg_impressions');
+            } else {
+                document.getElementById('hourlyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data for this date range.</p>';
+            }
+            if (dailyRes.status === 'fulfilled' && dailyRes.value.length > 0) {
+                renderBarChart('dailyChart', dailyRes.value, 'day_name', 'avg_impressions');
+            } else {
+                document.getElementById('dailyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data for this date range.</p>';
+            }
+        }
+
+        async function reloadStats() {
+            const qp = buildGlobalQP();
+            try {
+                const stats = await fetch(`/api/stats${qp ? '?' + qp : ''}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderStats(stats);
+            } catch(e) { console.error('reloadStats failed', e); }
+        }
+
+        async function reloadTopPosts() {
+            const qp = buildGlobalQP();
+            try {
+                const data = await fetch(`/api/top-posts?limit=10${qp ? '&' + qp : ''}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderTopPosts(data);
+            } catch(e) { console.error('reloadTopPosts failed', e); }
+        }
+
+        // ═══════════════════════════════════════════════
+        //  WORD BUBBLE CHART
+        // ═══════════════════════════════════════════════
+
+        let _wordBubbleMode = 'words';
+
+        function setWordBubbleMode(mode, btn) {
+            _wordBubbleMode = mode;
+            btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            reloadWordBubbles();
+            // Rescore benchmark from cache — no re-fetch needed
+            if (_benchmarkHandle && _cachedBenchmarkTweets) {
+                _rescoreBenchmark();
+            } else if (_benchmarkHandle) {
+                runBenchmark();
+            }
+        }
+
+        async function reloadWordBubbles() {
+            const qp = buildGlobalQP();
+            const minTweets = document.getElementById('wordBubbleMinTweets').value || 2;
+            const params = [qp, `min_tweets=${minTweets}`, 'top_n=50', `mode=${_wordBubbleMode}`].filter(Boolean).join('&');
+            try {
+                const data = await fetch(`/api/word-bubbles?${params}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                _lastOwnWords = data || [];
+                renderWordBubbles(data, 'wordBubbleChart');
+                // Rescore benchmark from cache — no re-fetch on control changes
+                if (_benchmarkHandle && _cachedBenchmarkTweets) {
+                    _rescoreBenchmark();
+                }
+            } catch(e) { console.error('reloadWordBubbles failed', e); }
+        }
+
+        // ─── Benchmark ────────────────────────────────────────────────────────
+
+        let _benchmarkHandle = '';
+        let _cachedBenchmarkTweets = null;   // raw tweet objects from last fetch
+        let _lastOwnWords = [];              // last scored words for own chart
+        let _lastBenchmarkWords = [];        // last scored words for benchmark chart
+
+        function _buildCSV(which) {
+            const words = which === 'benchmark' ? _lastBenchmarkWords : _lastOwnWords;
+            if (!words || words.length === 0) return null;
+            const header = 'word,count,avg_impressions,score,is_hashtag,is_bigram';
+            const rows = words.map(w =>
+                [
+                    `"${(w.word || '').replace(/"/g, '""')}"`,
+                    w.count || 0,
+                    w.avg_impressions || 0,
+                    w.score || 0,
+                    w.is_hashtag ? 'true' : 'false',
+                    w.is_bigram ? 'true' : 'false',
+                ].join(',')
+            );
+            return [header, ...rows].join('\n');
+        }
+
+        function downloadWordBubbleCSV(which) {
+            const csv = _buildCSV(which);
+            const label = which === 'benchmark' ? (_benchmarkHandle || 'benchmark') : 'your_tweets';
+            if (!csv) { alert('No data to download yet.'); return; }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cypherpulse_words_${label}_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyWordBubbleCSV(which) {
+            const words = which === 'benchmark' ? _lastBenchmarkWords : _lastOwnWords;
+            if (!words || words.length === 0) { alert('No data to copy yet.'); return; }
+            // Copy words only — one per line, no numbers
+            const csv = words.map(w => w.word || '').filter(Boolean).join('\n');
+            const btnId = which === 'benchmark' ? 'copyBenchmarkBtn' : 'copyOwnBtn';
+            const btn = document.getElementById(btnId);
+            navigator.clipboard.writeText(csv).then(() => {
+                const orig = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => { btn.textContent = orig; }, 2000);
+            }).catch(() => {
+                // Fallback for browsers without clipboard API
+                const ta = document.createElement('textarea');
+                ta.value = csv;
+                ta.style.cssText = 'position:fixed;opacity:0;';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                const orig = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => { btn.textContent = orig; }, 2000);
+            });
+        }
+
+        async function _rescoreBenchmark() {
+            if (!_cachedBenchmarkTweets || !_benchmarkHandle) return;
+            const minTweets = parseInt(document.getElementById('wordBubbleMinTweets').value) || 2;
+            try {
+                const resp = await fetch(
+                    `/api/benchmark/rescore?mode=${_wordBubbleMode}&top_n=50&min_tweets=${minTweets}`,
+                    {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(_cachedBenchmarkTweets),
+                        signal: AbortSignal.timeout(10000),
+                    }
+                );
+                const data = await resp.json();
+                _renderBenchmarkData(data, _benchmarkHandle);
+            } catch(e) { console.error('rescore failed', e); }
+        }
+
+        async function runBenchmark() {
+            const raw = document.getElementById('benchmarkHandle').value.trim().replace(/^@/, '');
+            if (!raw) return;
+            if (!/^[A-Za-z0-9_]{1,50}$/.test(raw)) {
+                _showBenchmarkMsg('Invalid handle — alphanumeric and underscore only.');
+                return;
+            }
+            _benchmarkHandle = raw;
+
+            const btn = document.getElementById('benchmarkBtn');
+            const maxTweets = parseInt(document.getElementById('benchmarkMaxTweets').value) || 200;
+            btn.textContent = `Fetching ${maxTweets} tweets…`;
+            btn.disabled = true;
+            _showBenchmarkMsg('');
+
+            try {
+                const minTweets = parseInt(document.getElementById('wordBubbleMinTweets').value) || 2;
+                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=${minTweets}&max_tweets=${maxTweets}&return_tweets=1`;
+                const timeoutMs = Math.max(30000, maxTweets * 150);
+                const resp = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json());
+                // Cache raw tweets for instant rescore on control changes
+                if (resp && resp.tweets) {
+                    _cachedBenchmarkTweets = resp.tweets;
+                    _renderBenchmarkData(resp.words, raw);
+                } else {
+                    // Fallback: old shape (plain array of words)
+                    _cachedBenchmarkTweets = null;
+                    _renderBenchmarkData(Array.isArray(resp) ? resp : [], raw);
+                }
+            } catch(e) {
+                console.error('runBenchmark failed', e);
+                _showBenchmarkMsg('Failed to fetch benchmark data.');
+                _renderBenchmarkData([], raw);
+            } finally {
+                btn.textContent = 'Compare';
+                btn.disabled = false;
+            }
+        }
+
+        function _renderBenchmarkData(data, handle) {
+            handle = handle || _benchmarkHandle;
+            const outer = document.getElementById('wordBubbleBenchmarkOuter');
+            const yourTitle = document.getElementById('wordBubbleYourTitle');
+            const benchTitle = document.getElementById('wordBubbleBenchmarkTitle');
+            const msgEl = document.getElementById('benchmarkMsg');
+
+            if (!data || data.length === 0) {
+                if (data !== null) {
+                    // data is [] — show message, hide benchmark panel
+                    _showBenchmarkMsg(`No data found for @${handle}`);
+                }
+                outer.style.display = 'none';
+                yourTitle.style.display = 'none';
+                return;
+            }
+
+            benchTitle.textContent = `@${handle}`;
+            outer.style.display = '';
+            yourTitle.style.display = '';
+            _lastBenchmarkWords = data || [];
+            renderWordBubbles(data, 'wordBubbleChartBenchmark');
+        }
+
+        function clearBenchmark() {
+            _benchmarkHandle = '';
+            document.getElementById('benchmarkHandle').value = '';
+            document.getElementById('wordBubbleBenchmarkOuter').style.display = 'none';
+            document.getElementById('wordBubbleYourTitle').style.display = 'none';
+            _showBenchmarkMsg('');
+        }
+
+        function _showBenchmarkMsg(msg) {
+            const el = document.getElementById('benchmarkMsg');
+            if (msg) { el.textContent = msg; el.style.display = ''; }
+            else { el.textContent = ''; el.style.display = 'none'; }
+        }
+
+        function wordBubbleBlueColor(value, minVal, maxVal) {
+            // Linear interpolation from #e0f2fe (light) to #0369a1 (dark) based on value
+            if (maxVal === minVal) return '#0369a1';
+            const t = (value - minVal) / (maxVal - minVal);
+            // Light: r=224, g=242, b=254 → Dark: r=3, g=105, b=161
+            const r = Math.round(224 + t * (3 - 224));
+            const g = Math.round(242 + t * (105 - 242));
+            const b = Math.round(254 + t * (161 - 254));
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function renderWordBubbles(words, containerId) {
+            containerId = containerId || 'wordBubbleChart';
+            const legendId = containerId === 'wordBubbleChart' ? 'wordBubbleLegend' : containerId + 'Legend';
+            const el = document.getElementById(containerId);
+            const legendEl = document.getElementById(legendId);
+
+            if (!words || words.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No word data yet — tweets need text content and snapshots.</p>';
+                legendEl.innerHTML = '';
+                return;
+            }
+
+            const SVG_W = 560;
+            const GAP = 6;
+            const MIN_R = 18;
+            const MAX_R = 60;
+            const PADDING = 12;
+
+            // Size bubbles by IDF-weighted score (not raw avg_impressions).
+            // This prevents words that appear in every tweet from dominating
+            // just because they inherit impressions from all tweets.
+            const scores = words.map(w => w.score != null ? w.score : w.avg_impressions);
+            const maxScore = Math.max(...scores);
+            const minScore = Math.min(...scores);
+
+            function getRadius(w) {
+                const s = w.score != null ? w.score : w.avg_impressions;
+                if (maxScore === minScore) return (MIN_R + MAX_R) / 2;
+                const t = (s - minScore) / (maxScore - minScore);
+                return MIN_R + t * (MAX_R - MIN_R);
+            }
+
+            // Get regular words score range for colour scale
+            const regularWords = words.filter(w => !w.is_hashtag);
+            const regScores = regularWords.map(w => w.score != null ? w.score : w.avg_impressions);
+            const regMin = regScores.length ? Math.min(...regScores) : 0;
+            const regMax = regScores.length ? Math.max(...regScores) : 1;
+
+            // Layout: row-based packing
+            const circles = words.map(w => ({ ...w, r: getRadius(w) }));
+
+            // Place circles row by row
+            let rows = [];
+            let currentRow = [];
+            let currentRowWidth = PADDING;
+
+            for (const c of circles) {
+                const needed = (currentRow.length === 0 ? 0 : GAP) + c.r * 2;
+                if (currentRowWidth + needed > SVG_W - PADDING && currentRow.length > 0) {
+                    rows.push(currentRow);
+                    currentRow = [c];
+                    currentRowWidth = PADDING + c.r * 2;
+                } else {
+                    currentRow.push(c);
+                    currentRowWidth += needed;
+                }
+            }
+            if (currentRow.length > 0) rows.push(currentRow);
+
+            // Assign cx, cy
+            let y = PADDING;
+            const placed = [];
+            for (const row of rows) {
+                const rowMaxR = Math.max(...row.map(c => c.r));
+                const rowH = rowMaxR * 2;
+                y += rowMaxR; // center y of this row
+
+                let x = PADDING;
+                for (const c of row) {
+                    x += c.r;
+                    placed.push({ ...c, cx: x, cy: y });
+                    x += c.r + GAP;
+                }
+                y += rowMaxR + GAP;
+            }
+
+            const svgH = y + PADDING;
+
+            // Build SVG
+            const ns = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(ns, 'svg');
+            svg.setAttribute('width', SVG_W);
+            svg.setAttribute('height', svgH);
+            svg.setAttribute('viewBox', `0 0 ${SVG_W} ${svgH}`);
+            svg.style.display = 'block';
+            svg.style.maxWidth = '100%';
+
+            for (const c of placed) {
+                const g = document.createElementNS(ns, 'g');
+                g.style.cursor = 'pointer';
+
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', c.cx);
+                circle.setAttribute('cy', c.cy);
+                circle.setAttribute('r', c.r);
+                const fillColor = c.is_hashtag
+                    ? '#f59e0b'
+                    : wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax);
+                circle.setAttribute('fill', fillColor);
+                circle.setAttribute('opacity', '0.9');
+
+                // Bigrams get a dashed stroke border; trigrams get dotted; hashtags/words get solid
+                if (c.is_bigram) {
+                    circle.setAttribute('stroke', wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax));
+                    circle.setAttribute('stroke-width', '2');
+                    circle.setAttribute('stroke-dasharray', '4,2');
+                    circle.setAttribute('fill-opacity', '0.75');
+                } else if (c.is_trigram) {
+                    circle.setAttribute('stroke', wordBubbleBlueColor(c.score != null ? c.score : c.avg_impressions, regMin, regMax));
+                    circle.setAttribute('stroke-width', '2');
+                    circle.setAttribute('stroke-dasharray', '2,2');
+                    circle.setAttribute('fill-opacity', '0.65');
+                }
+
+                const label = document.createElementNS(ns, 'text');
+                label.setAttribute('x', c.cx);
+                label.setAttribute('y', c.cy);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('dominant-baseline', 'central');
+                const fontSize = Math.max(9, Math.round(c.r * 0.38));
+                label.setAttribute('font-size', fontSize);
+                label.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, sans-serif');
+                label.setAttribute('font-weight', '600');
+                // Text colour: dark on light backgrounds, light on dark
+                const cScore = c.score != null ? c.score : c.avg_impressions;
+                const textColor = c.is_hashtag ? '#1c1917' : (cScore > (regMin + regMax) / 2 ? '#e0f2fe' : '#0c4a6e');
+                label.setAttribute('fill', textColor);
+                label.setAttribute('pointer-events', 'none');
+
+                // Truncate label if circle too small
+                const maxChars = Math.max(3, Math.floor(c.r / (fontSize * 0.5)));
+                const displayWord = c.word.length > maxChars ? c.word.slice(0, maxChars) + '…' : c.word;
+                label.textContent = displayWord;
+
+                const kindLabel = c.is_trigram ? 'trigram' : (c.is_bigram ? 'pair' : (c.is_hashtag ? 'hashtag' : 'word'));
+                const tip = c.is_trigram
+                    ? `[trigram] ${c.word} — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''}`
+                    : `${c.word} [${kindLabel}] — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''} (score: ${c.score != null ? c.score.toFixed(1) : '—'})`;
+
+                g.addEventListener('mouseenter', e => showTooltip(e, tip));
+                g.addEventListener('mousemove',  e => moveTooltip(e));
+                g.addEventListener('mouseleave', () => hideTooltip());
+
+                g.appendChild(circle);
+                g.appendChild(label);
+                svg.appendChild(g);
+            }
+
+            el.innerHTML = '';
+            el.appendChild(svg);
+
+            // Legend
+            const hasBigrams = words.some(w => w.is_bigram);
+            const hasTrigrams = words.some(w => w.is_trigram);
+            const hasHashtags = words.some(w => w.is_hashtag);
+            let legendHtml = '';
+            if (hasHashtags) {
+                legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:14px;height:14px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0;"></span>
+                    Hashtag
+                </span>`;
+            }
+            legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:80px;height:14px;border-radius:4px;
+                        background:linear-gradient(to right,#e0f2fe,#0369a1);display:inline-block;flex-shrink:0;"></span>
+                    Word (light = fewer impressions, dark = more)
+                </span>`;
+            if (hasBigrams) {
+                legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink:0;">
+                        <circle cx="8" cy="8" r="6" fill="#3b82f6" fill-opacity="0.75"
+                            stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,2"/>
+                    </svg>
+                    Bigram (dashed)
+                </span>`;
+            }
+            if (hasTrigrams) {
+                legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink:0;">
+                        <circle cx="8" cy="8" r="6" fill="#3b82f6" fill-opacity="0.65"
+                            stroke="#3b82f6" stroke-width="2" stroke-dasharray="2,2"/>
+                    </svg>
+                    Trigram (dotted)
+                </span>`;
+            }
+            legendHtml += `
+                <span style="display:flex;align-items:center;gap:6px;color:#64748b;">
+                    Circle size = IDF-weighted score
+                </span>`;
+            legendEl.innerHTML = legendHtml;
+        }
+
+        // ─── Info icon: close on outside click (mobile tap support) ───
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.info-icon')) {
+                document.querySelectorAll('.info-icon.open').forEach(el => el.classList.remove('open'));
+            }
+        });
+
+        // ═══════════════════════════════════════════════
+        //  SHARED TOOLTIP (for SVG chart elements)
+        // ═══════════════════════════════════════════════
+        const tooltip = document.getElementById('cpTooltip');
+        function showTooltip(e, text) {
+            tooltip.textContent = text;
+            tooltip.style.display = 'block';
+            moveTooltip(e);
+        }
+        function moveTooltip(e) {
+            tooltip.style.left = (e.clientX + 12) + 'px';
+            tooltip.style.top  = (e.clientY - 30) + 'px';
+        }
+        function hideTooltip() { tooltip.style.display = 'none'; }
+
+        // ═══════════════════════════════════════════════
+        //  FETCH — all sections use global date range
+        // ═══════════════════════════════════════════════
+        async function fetchInitialData() {
             try {
                 const signal = AbortSignal.timeout(10000);
+                const qp     = buildGlobalQP();
+                const qpStr  = qp ? '?' + qp : '';
+
+                // Core data — dashboard blocks on this
                 const [stats, performance, hourly, daily, topPosts, trends] = await Promise.all([
-                    fetch('/api/stats', { signal }).then(r => r.json()),
-                    fetch('/api/performance/24', { signal }).then(r => r.json()),
-                    fetch('/api/hourly-performance', { signal }).then(r => r.json()),
-                    fetch('/api/daily-performance', { signal }).then(r => r.json()),
-                    fetch('/api/top-posts?limit=10', { signal }).then(r => r.json()),
-                    fetch('/api/trends/24', { signal }).then(r => r.json())
+                    fetch(`/api/stats${qpStr}`,                           { signal }).then(r => r.json()),
+                    fetch(`/api/performance/24${qpStr}`,                  { signal }).then(r => r.json()),
+                    fetch(`/api/hourly-performance${qpStr}`,              { signal }).then(r => r.json()),
+                    fetch(`/api/daily-performance${qpStr}`,               { signal }).then(r => r.json()),
+                    fetch(`/api/top-posts?limit=10${qp ? '&' + qp : ''}`, { signal }).then(r => r.json()),
+                    fetch(`/api/trends/24${qpStr}`,                       { signal }).then(r => r.json()),
                 ]);
 
-                return { stats, performance, hourly, daily, topPosts, trends };
+                // Decay + heatmap load independently — failures don't block dashboard
+                const [decay, heatmap] = await Promise.allSettled([
+                    fetch(`/api/decay-curve${qpStr}`,  { signal }).then(r => r.json()),
+                    fetch(`/api/heatmap${qpStr}`,      { signal }).then(r => r.json()),
+                ]);
+
+                return {
+                    stats, performance, hourly, daily, topPosts, trends,
+                    decay:   decay.status   === 'fulfilled' ? decay.value   : [],
+                    heatmap: heatmap.status === 'fulfilled' ? heatmap.value : [],
+                };
             } catch (error) {
                 console.error('Error fetching data:', error);
                 return null;
             }
         }
 
+        // ═══════════════════════════════════════════════
+        //  RENDER: STATS
+        // ═══════════════════════════════════════════════
         function renderStats(stats) {
             document.getElementById('totalTweets').textContent = stats.total_tweets.toLocaleString();
             document.getElementById('totalSnapshots').textContent = stats.total_snapshots.toLocaleString();
             document.getElementById('avgImpressions').textContent = Math.round(stats.avg_impressions_24h).toLocaleString();
+            if (stats.version) {
+                const el = document.getElementById('appVersion');
+                if (el) el.textContent = 'v' + stats.version;
+            }
         }
 
+        // ═══════════════════════════════════════════════
+        //  RENDER: PERFORMANCE TABLE
+        // ═══════════════════════════════════════════════
+        function renderPerformanceTable(data) {
+            const tbody = document.querySelector('#performanceTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${row.post_type}</strong></td>
+                    <td>${row.posts}</td>
+                    <td>${row.avg_likes}</td>
+                    <td>${row.avg_replies}</td>
+                    <td>${row.avg_retweets}</td>
+                    <td>${Math.round(row.avg_impressions).toLocaleString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function switchTimeframe(hours, btn) {
+            btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPerfHours = hours;
+            reloadPerf();
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: TRENDS CHART
+        // ═══════════════════════════════════════════════
         async function switchTrends(hours, btn) {
             btn.closest('div').querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            try {
-                const signal = AbortSignal.timeout(10000);
-                const data = await fetch('/api/trends/' + hours, { signal }).then(r => r.json());
-                renderTrendsChart(data);
-            } catch(e) { console.error(e); }
+            currentTrendsHours = hours;
+            reloadTrends();
         }
 
         function renderTrendsChart(rows) {
@@ -438,10 +1371,8 @@
                 return;
             }
 
-            // Group by type
             const types = [...new Set(rows.map(r => r.post_type))];
             const dates = [...new Set(rows.map(r => r.post_date))].sort();
-            const colors = { tweet: '#3b82f6', reply: '#8b5cf6', retweet: '#10b981' };
 
             const byType = {};
             types.forEach(t => {
@@ -465,15 +1396,15 @@
                     const val = d ? (d.avg_impressions || 0) : 0;
                     const h = Math.max(2, Math.round((val / maxImpr) * chartH));
                     const x = x0 + ti * barW;
-                    const color = colors[type] || '#94a3b8';
+                    const color = typeColor(type);
                     bars += `<rect x="${x}" y="${chartH - h}" width="${barW - 2}" height="${h}" fill="${color}" opacity="0.8" rx="2"><title>${type}: ${val} avg impressions on ${date}</title></rect>`;
                 });
-                const shortDate = date.slice(5); // MM-DD
+                const shortDate = date.slice(5);
                 labels += `<text x="${x0 + groupW/2}" y="${chartH + 16}" text-anchor="middle" fill="#64748b" font-size="10">${shortDate}</text>`;
             });
 
             types.forEach((type, i) => {
-                const color = colors[type] || '#94a3b8';
+                const color = typeColor(type);
                 legend += `<rect x="${i * 90}" y="0" width="10" height="10" fill="${color}" rx="2"/><text x="${i * 90 + 14}" y="9" fill="#94a3b8" font-size="12">${type}</text>`;
             });
 
@@ -484,65 +1415,37 @@
             </svg></div>`;
         }
 
-        async function switchTimeframe(hours, btn) {
-            document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            try {
-                const signal = AbortSignal.timeout(10000);
-                const data = await fetch('/api/performance/' + hours, { signal }).then(r => r.json());
-                renderPerformanceTable(data);
-            } catch(e) {
-                console.error('Failed to load timeframe:', e);
-            }
-        }
-
-        function renderPerformanceTable(data) {
-            const tbody = document.querySelector('#performanceTable tbody');
-            tbody.innerHTML = '';
-
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${row.post_type}</strong></td>
-                    <td>${row.posts}</td>
-                    <td>${row.avg_likes}</td>
-                    <td>${row.avg_replies}</td>
-                    <td>${row.avg_retweets}</td>
-                    <td>${Math.round(row.avg_impressions).toLocaleString()}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // Post type colours (consistent across all charts)
+        // ═══════════════════════════════════════════════
+        //  POST TYPE COLOURS
+        // ═══════════════════════════════════════════════
         const TYPE_COLORS = {
             'tweet':      '#3b82f6',
             'post':       '#3b82f6',
             'reply':      '#f59e0b',
             'retweet':    '#10b981',
             'quote':      '#8b5cf6',
+            'thread':     '#ec4899',
+            'spicy':      '#ef4444',
+            'trend':      '#06b6d4',
+            'trust_signal': '#a3e635',
             'other':      '#64748b',
         };
         function typeColor(t) {
             return TYPE_COLORS[t && t.toLowerCase()] || '#64748b';
         }
 
-        /**
-         * Render a stacked horizontal bar chart from rows that include a post_type field.
-         * Each unique labelKey value becomes one row; segments are stacked by post_type.
-         * valueKey is the metric to display (e.g. 'avg_impressions').
-         */
+        // ═══════════════════════════════════════════════
+        //  RENDER: STACKED BAR CHART (hourly / daily)
+        // ═══════════════════════════════════════════════
         function renderBarChart(containerId, rows, labelKey, valueKey) {
             const container = document.getElementById(containerId);
             if (!rows || rows.length === 0) { container.innerHTML = '<p style="color:#64748b;font-size:13px;">No data yet.</p>'; return; }
 
-            // Collect unique labels (in original order) and types
             const labelOrder = [];
             const labelSeen = new Set();
             rows.forEach(r => { const l = String(r[labelKey]); if (!labelSeen.has(l)) { labelOrder.push(l); labelSeen.add(l); } });
             const types = [...new Set(rows.map(r => (r.post_type || 'other').toLowerCase()))].sort();
 
-            // Build map: label -> { type -> value }
             const map = {};
             labelOrder.forEach(l => { map[l] = {}; });
             rows.forEach(r => {
@@ -551,11 +1454,9 @@
                 map[l][t] = (r[valueKey] || 0);
             });
 
-            // Max total per label (for scaling)
             const totals = labelOrder.map(l => types.reduce((s, t) => s + (map[l][t] || 0), 0));
             const maxTotal = Math.max(...totals, 1);
 
-            // Build legend
             const legend = types.map(t =>
                 `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:11px;color:#94a3b8;">
                     <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${typeColor(t)}"></span>${t}
@@ -570,18 +1471,14 @@
                 const row = document.createElement('div');
                 row.className = 'bar-row';
 
-                // Build stacked segments HTML
                 let segments = '';
                 types.forEach(t => {
                     const val = map[axisLabel][t] || 0;
                     if (val <= 0) return;
                     const pct = (val / maxTotal) * 100;
-
-                    // Add value inside segment if wide enough (>10%)
                     const segLabel = (pct > 2.5 && val >= 1)
-                        ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;${t==='reply'?'font-weight:700;':''}">${Math.round(val).toLocaleString()}</span>`
+                        ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;">${Math.round(val).toLocaleString()}</span>`
                         : '';
-
                     segments += `<div title="${t}: ${Math.round(val).toLocaleString()} avg ${valueKey.replace('avg_','')}"
                         style="width:${pct}%;background:${typeColor(t)};height:100%;display:inline-block;position:relative;">${segLabel}</div>`;
                 });
@@ -596,7 +1493,6 @@
                 chart.appendChild(row);
             });
 
-            // Legend below chart
             const legendEl = document.createElement('div');
             legendEl.style.cssText = 'margin-top:8px;';
             legendEl.innerHTML = legend;
@@ -606,17 +1502,192 @@
             container.appendChild(legendEl);
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        // ═══════════════════════════════════════════════
+        //  RENDER: IMPRESSION DECAY CURVE
+        // ═══════════════════════════════════════════════
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: IMPRESSION DECAY CURVE
+        //  X-axis: Day 1 | Day 3 | Day 7
+        //  A downward slope is expected — impressions plateau.
+        // ═══════════════════════════════════════════════
+        function renderDecayChart(rows) {
+            const el = document.getElementById('decayChart');
+            if (!rows || rows.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No decay data yet — tweets need snapshots at both 24h and 72h.</p>';
+                return;
+            }
+
+            // Show NEW impressions per period (deltas), not cumulative totals.
+            // Period 1 = "First 24h"  → h24 (impressions in first 24h)
+            // Period 2 = "Day 1→3"    → h72 - h24 (new impressions between 24h and 72h snapshot)
+            // Period 3 = "Day 3→7"    → h168 - h72 (new impressions between 72h and 7d snapshot)
+            // A bar of 0 in period 2 means the tweet stopped spreading after day 1.
+
+            const PAD_L = 55, PAD_T = 16, PAD_R = 20, PAD_B = 40;
+            const W = 520, H = 220;
+            const innerW = W - PAD_L - PAD_R;
+            const innerH = H - PAD_T - PAD_B;
+
+            // Build per-row period values
+            const periods = ['First 24h', 'Day 1→3', 'Day 3→7'];
+            const xPoints = [0, innerW / 2, innerW];
+
+            const processedRows = rows.map(r => ({
+                post_type: r.post_type,
+                count: r.count,
+                vals: [
+                    r.h24,
+                    r.new_24_72,
+                    r.new_72_168,
+                ],
+            }));
+
+            // Y scale across all non-null values
+            const allVals = processedRows.flatMap(r => r.vals.filter(v => v != null));
+            const maxV = Math.max(...allVals, 1);
+            function yPos(v) { return innerH - Math.round((Math.max(0, v) / maxV) * innerH); }
+
+            let lines = '', dots = '', gridLines = '';
+
+            // Y grid lines
+            for (let i = 0; i <= 4; i++) {
+                const v = Math.round((maxV / 4) * i);
+                const y = yPos(v);
+                gridLines += `<line x1="0" y1="${y}" x2="${innerW}" y2="${y}" stroke="rgba(148,163,184,0.1)" stroke-dasharray="3,3"/>`;
+                gridLines += `<text x="-6" y="${y + 4}" text-anchor="end" fill="#64748b" font-size="10">${v.toLocaleString()}</text>`;
+            }
+
+            const annotation = `<text x="${innerW - 5}" y="10" text-anchor="end" fill="#64748b" font-size="9" font-style="italic">bar near 0 = tweet stopped spreading</text>`;
+
+            processedRows.forEach(row => {
+                const color = typeColor(row.post_type);
+                const pts = row.vals.map((v, i) => v != null ? { x: xPoints[i], y: yPos(v), v } : null);
+
+                let d = '';
+                pts.forEach(p => { if (p) d += (d === '' ? 'M' : 'L') + `${p.x},${p.y}`; });
+                if (d) lines += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" opacity="0.9"/>`;
+
+                pts.forEach((p, i) => {
+                    if (!p) return;
+                    const label = `${row.post_type} — ${periods[i]}: avg ${Math.round(p.v).toLocaleString()} new impressions (${row.count} tweets)`;
+                    dots += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${color}" stroke="#0f172a" stroke-width="1.5" class="decay-dot" data-tip="${label}"/>`;
+                });
+            });
+
+            const xAxisLabels = periods.map((lbl, i) =>
+                `<text x="${xPoints[i]}" y="${innerH + 20}" text-anchor="middle" fill="#94a3b8" font-size="11">${lbl}</text>`
+            ).join('');
+
+            const subLabel = `<text x="${innerW/2}" y="${innerH + 36}" text-anchor="middle" fill="#475569" font-size="10">New impressions arriving in each period</text>`;
+
+            el.innerHTML = `
+                <div style="overflow-x:auto">
+                    <svg width="${W}" height="${H}" style="display:block;font-family:inherit">
+                        <g transform="translate(${PAD_L},${PAD_T})">
+                            ${gridLines}${annotation}${lines}${dots}${xAxisLabels}${subLabel}
+                        </g>
+                    </svg>
+                </div>
+                <div class="decay-legend" id="decayLegend"></div>
+            `;
+
+            const legendEl = document.getElementById('decayLegend');
+            processedRows.forEach(row => {
+                const item = document.createElement('div');
+                item.className = 'decay-legend-item';
+                const p1 = row.vals[0] != null ? ` 24h: ${row.vals[0]}` : '';
+                const p2 = row.vals[1] != null ? ` | Day1→3: +${row.vals[1]}` : '';
+                const p3 = row.vals[2] != null ? ` | Day3→7: +${row.vals[2]}` : '';
+                item.innerHTML = `<span style="display:inline-block;width:12px;height:3px;border-radius:2px;background:${typeColor(row.post_type)}"></span> ${row.post_type} (n=${row.count})${p1}${p2}${p3}`;
+                legendEl.appendChild(item);
+            });
+
+            el.querySelectorAll('.decay-dot').forEach(dot => {
+                dot.addEventListener('mouseenter', e => showTooltip(e, dot.dataset.tip));
+                dot.addEventListener('mousemove', moveTooltip);
+                dot.addEventListener('mouseleave', hideTooltip);
+            });
         }
 
+        // ═══════════════════════════════════════════════
+        //  RENDER: HEATMAP
+        // ═══════════════════════════════════════════════
+        function renderHeatmap(rows, filter) {
+            const el = document.getElementById('heatmapChart');
+            if (!rows || rows.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No heatmap data yet.</p>';
+                return;
+            }
+
+            const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const CELL = 26, GAP = 2, LEFT_PAD = 36, TOP_PAD = 22, HOURS = 24, DAYS = 7;
+            const totalW = LEFT_PAD + HOURS * (CELL + GAP);
+            const totalH = TOP_PAD  + DAYS  * (CELL + GAP);
+
+            const map = {};
+            rows.forEach(r => {
+                const dow = parseInt(r.dow, 10);
+                const hour = parseInt(r.hour, 10);
+                if (!map[dow]) map[dow] = {};
+                map[dow][hour] = r;
+            });
+            const maxVal = Math.max(...rows.map(r => r.avg_impressions || 0), 1);
+
+            // Colour scale: replies = orange, posts/all = blue
+            const isReply = filter === 'reply';
+            function heatColor(val) {
+                const t = val / maxVal;
+                const r1 = isReply ? 255 : 224, g1 = isReply ? 247 : 242, b1 = isReply ? 237 : 254;
+                const r2 = isReply ? 194 : 3,   g2 = isReply ?  65 : 105, b2 = isReply ?  12 : 161;
+                return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
+            }
+
+            let cells = '', rowLabels = '', colLabels = '';
+
+            for (let h = 0; h < HOURS; h++) {
+                if (h % 3 === 0) {
+                    const x = LEFT_PAD + h * (CELL + GAP) + CELL / 2;
+                    colLabels += `<text x="${x}" y="14" text-anchor="middle" fill="#64748b" font-size="10">${String(h).padStart(2,'0')}</text>`;
+                }
+            }
+
+            for (let d = 0; d < DAYS; d++) {
+                const y = TOP_PAD + d * (CELL + GAP);
+                rowLabels += `<text x="${LEFT_PAD - 4}" y="${y + CELL/2 + 4}" text-anchor="end" fill="#94a3b8" font-size="10">${DAY_NAMES[d]}</text>`;
+                for (let h = 0; h < HOURS; h++) {
+                    const x = LEFT_PAD + h * (CELL + GAP);
+                    const cell = map[d] && map[d][h];
+                    const val  = cell ? (cell.avg_impressions || 0) : 0;
+                    const posts = cell ? cell.posts : 0;
+                    const color = val > 0 ? heatColor(val) : (posts > 0 ? heatColor(0.01) : 'rgba(15,23,42,0.4)');
+                    const tip = `${DAY_NAMES[d]} ${String(h).padStart(2,'0')}:00 — avg ${Math.round(val).toLocaleString()} impressions (${posts} post${posts !== 1 ? 's' : ''})`;
+                    cells += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="${color}" class="hm-cell" data-tip="${tip}"/>`;
+                }
+            }
+
+            el.innerHTML = `
+                <div style="overflow-x:auto">
+                    <svg width="${totalW}" height="${totalH}" style="display:block;font-family:inherit">
+                        ${colLabels}${rowLabels}${cells}
+                    </svg>
+                </div>`;
+
+            el.querySelectorAll('.hm-cell').forEach(cell => {
+                cell.addEventListener('mouseenter', e => showTooltip(e, cell.dataset.tip));
+                cell.addEventListener('mousemove', moveTooltip);
+                cell.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+
+        // ═══════════════════════════════════════════════
+        //  RENDER: TOP POSTS
+        // ═══════════════════════════════════════════════
         function renderTopPosts(posts) {
             const container = document.getElementById('topPosts');
             container.innerHTML = '';
 
-            posts.forEach((post, index) => {
+            posts.forEach((post) => {
                 const card = document.createElement('div');
                 card.className = 'post-card';
                 
@@ -647,8 +1718,46 @@
             });
         }
 
+        // ═══════════════════════════════════════════════
+        //  INIT + RELOAD
+        // ═══════════════════════════════════════════════
+        let currentTrendsHours = 24;
+        let currentPerfHours   = 24;
+
+        async function reloadAll() {
+            const data = await fetchInitialData();
+            if (!data) return;
+
+            renderStats(data.stats);
+            renderPerformanceTable(data.performance);
+            renderTrendsChart(data.trends);
+
+            if (data.hourly.length > 0) {
+                const hourlyFmt = data.hourly.map(r => ({
+                    ...r,
+                    hour_label: String(r.hour_utc).padStart(2,'0') + ':00'
+                }));
+                renderBarChart('hourlyChart', hourlyFmt, 'hour_label', 'avg_impressions');
+            } else {
+                document.getElementById('hourlyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data yet.</p>';
+            }
+
+            if (data.daily.length > 0) {
+                renderBarChart('dailyChart', data.daily, 'day_name', 'avg_impressions');
+            } else {
+                document.getElementById('dailyChart').innerHTML = '<p style="color:#64748b;font-size:13px;">No data yet.</p>';
+            }
+
+            renderDecayChart(data.decay);
+            renderHeatmap(data.heatmap, currentHeatmapFilter);
+            renderTopPosts(data.topPosts);
+            reloadWordBubbles();
+
+            updateRefreshIndicator();
+        }
+
         async function init() {
-            const data = await fetchData();
+            const data = await fetchInitialData();
 
             if (!data) {
                 document.getElementById('loading').innerHTML = '<p style="color: #ef4444;">Failed to load data. Make sure the API is running.</p>';
@@ -659,7 +1768,6 @@
             renderPerformanceTable(data.performance);
             renderTrendsChart(data.trends);
 
-            // Render hourly chart — format hour as "14:00"
             if (data.hourly.length > 0) {
                 const hourlyFmt = data.hourly.map(r => ({
                     ...r,
@@ -668,18 +1776,18 @@
                 renderBarChart('hourlyChart', hourlyFmt, 'hour_label', 'avg_impressions');
             }
 
-            // Render daily chart
             if (data.daily.length > 0) {
                 renderBarChart('dailyChart', data.daily, 'day_name', 'avg_impressions');
             }
 
+            renderDecayChart(data.decay);
+            renderHeatmap(data.heatmap, currentHeatmapFilter);
             renderTopPosts(data.topPosts);
+            reloadWordBubbles();
 
-            // Show dashboard, hide loading
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
-            
-            // Update last refreshed timestamp
+
             updateRefreshIndicator();
         }
 
@@ -696,7 +1804,7 @@
         init();
 
         // Auto-refresh every 5 minutes
-        setInterval(init, 5 * 60 * 1000);
+        setInterval(() => reloadAll(), 5 * 60 * 1000);
     </script>
 </body>
 </html>

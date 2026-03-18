@@ -1,11 +1,37 @@
 """FastAPI backend for CypherPulse dashboard."""
 
+import json
 import logging
+import math
 import os
+import re
 import sqlite3
 from pathlib import Path
-from typing import Dict, List, Any, Union
-from fastapi import FastAPI, HTTPException, Query
+from typing import Dict, List, Any, Optional, Union
+
+# Load .env early so TWITTER_API_KEY is available to the API server
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _env_search = [
+        Path(__file__).resolve().parent.parent / ".env",        # worktree/repo root
+        Path(__file__).resolve().parent.parent.parent / ".env", # one level up (sibling repos)
+        Path.cwd() / ".env",
+        Path.cwd().parent / ".env",
+        Path.home() / ".cypherpulse" / ".env",
+        Path.home() / "projects" / "cypherpulse" / ".env",
+    ]
+    # Load all found .env files (first wins, later ones don't override)
+    import logging as _logging
+    _api_logger = _logging.getLogger(__name__)
+    for _env_candidate in _env_search:
+        if _env_candidate.exists():
+            _load_dotenv(_env_candidate, override=False)
+            _api_logger.info(f"Loaded .env from {_env_candidate}")
+except ImportError:
+    pass
+
+import httpx
+from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,14 +41,18 @@ from .db import (
     get_top_posts,
     get_hourly_performance,
     get_daily_performance,
-    get_trends_by_type
+    get_trends_by_type,
+    get_decay_curve,
+    get_heatmap,
+    get_word_bubbles,
 )
+from . import __version__
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="CypherPulse API", version="0.1.0")
+app = FastAPI(title="CypherPulse API", version=__version__)
 
 # CORS configuration - read from environment variable
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
@@ -47,26 +77,37 @@ async def root() -> Union[FileResponse, Dict[str, str]]:
     if index_file.exists():
         return FileResponse(index_file)
     logger.warning(f"Dashboard index.html not found at {index_file}, falling back to API response")
-    return {"message": "CypherPulse API", "version": "0.1.0"}
+    return {"message": "CypherPulse API", "version": __version__}
 
 
 @app.get("/api/stats")
-async def api_stats() -> JSONResponse:
+async def api_stats(
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+) -> JSONResponse:
     """Get summary statistics."""
     try:
-        return JSONResponse(get_stats())
+        stats = get_stats(days=days, from_date=from_date, to_date=to_date)
+        stats["version"] = __version__
+        return JSONResponse(stats)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch statistics")
 
 
 @app.get("/api/performance/{snapshot_hours}")
-async def api_performance(snapshot_hours: int) -> JSONResponse:
+async def api_performance(
+    snapshot_hours: int,
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+) -> JSONResponse:
     """Get performance metrics by post type for a specific snapshot interval."""
     if snapshot_hours not in [24, 72, 168]:
         raise HTTPException(status_code=400, detail="snapshot_hours must be 24, 72, or 168")
     try:
-        data = get_performance_by_type(snapshot_hours)
+        data = get_performance_by_type(snapshot_hours, days=days, from_date=from_date, to_date=to_date)
         return JSONResponse(data)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching performance: {e}")
@@ -74,10 +115,15 @@ async def api_performance(snapshot_hours: int) -> JSONResponse:
 
 
 @app.get("/api/top-posts")
-async def api_top_posts(limit: int = Query(default=10, ge=1, le=100)) -> JSONResponse:
+async def api_top_posts(
+    limit: int = Query(default=10, ge=1, le=100),
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+) -> JSONResponse:
     """Get top posts by impressions."""
     try:
-        data = get_top_posts(limit)
+        data = get_top_posts(limit, days=days, from_date=from_date, to_date=to_date)
         return JSONResponse(data)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching top posts: {e}")
@@ -85,10 +131,14 @@ async def api_top_posts(limit: int = Query(default=10, ge=1, le=100)) -> JSONRes
 
 
 @app.get("/api/hourly-performance")
-async def api_hourly() -> JSONResponse:
+async def api_hourly(
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+) -> JSONResponse:
     """Get performance by hour of day."""
     try:
-        data = get_hourly_performance()
+        data = get_hourly_performance(days=days, from_date=from_date, to_date=to_date)
         return JSONResponse(data)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching hourly performance: {e}")
@@ -96,10 +146,14 @@ async def api_hourly() -> JSONResponse:
 
 
 @app.get("/api/daily-performance")
-async def api_daily() -> JSONResponse:
+async def api_daily(
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+) -> JSONResponse:
     """Get performance by day of week."""
     try:
-        data = get_daily_performance()
+        data = get_daily_performance(days=days, from_date=from_date, to_date=to_date)
         return JSONResponse(data)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching daily performance: {e}")
@@ -109,17 +163,479 @@ async def api_daily() -> JSONResponse:
 @app.get("/api/trends/{snapshot_hours}")
 async def api_trends(
     snapshot_hours: int,
-    days: int = Query(default=30, ge=1, le=365)
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
 ) -> JSONResponse:
     """Get engagement trends over time by post type."""
     if snapshot_hours not in [24, 72, 168]:
         raise HTTPException(status_code=400, detail="snapshot_hours must be 24, 72, or 168")
     try:
-        data = get_trends_by_type(snapshot_hours, days)
+        data = get_trends_by_type(snapshot_hours, days=days, from_date=from_date, to_date=to_date)
         return JSONResponse(data)
     except sqlite3.Error as e:
         logger.error(f"Database error fetching trends: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch trends")
+
+
+@app.get("/api/decay-curve")
+async def api_decay_curve(
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+) -> JSONResponse:
+    """Get impression decay curve grouped by post type.
+
+    Only includes tweets with snapshots at all three checkpoints (24h, 72h, 168h).
+    Returns list of {post_type, h24, h72, h168, count}.
+    """
+    try:
+        data = get_decay_curve(days=days, from_date=from_date, to_date=to_date)
+        return JSONResponse(data)
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching decay curve: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch decay curve data")
+
+
+@app.get("/api/heatmap")
+async def api_heatmap(
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    post_type_filter: Optional[str] = Query(default=None, description="Filter: 'reply', 'post', or omit for all"),
+) -> JSONResponse:
+    """Get hour × day heatmap data.
+
+    Returns list of {hour: 0-23, dow: 0-6 (Sun=0), avg_impressions, posts}.
+    Accepts optional post_type_filter: 'reply' (replies only), 'post' (non-replies), or omit/all for no filter.
+    """
+    try:
+        # Normalise filter value
+        ptf = post_type_filter.lower().strip() if post_type_filter else None
+        if ptf == 'all':
+            ptf = None
+        data = get_heatmap(days=days, from_date=from_date, to_date=to_date, post_type_filter=ptf)
+        return JSONResponse(data)
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching heatmap: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch heatmap data")
+
+
+@app.get("/api/word-bubbles")
+async def api_word_bubbles(
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    min_tweets: int = Query(default=2, ge=1, le=100, description="Minimum tweet count per word"),
+    top_n: int = Query(default=50, ge=1, le=200, description="Maximum number of words to return"),
+    mode: str = Query(default='words', description="Mode: 'words' (single words), 'pairs' (PMI bigrams), 'trigrams' (PMI trigrams), 'both' (words+pairs), 'all' (words+pairs+trigrams)"),
+) -> JSONResponse:
+    """Get word frequency bubble chart data.
+
+    Returns list of {word, count, avg_impressions, score, is_hashtag, is_bigram, is_trigram}.
+    Mode 'words' = single words (default), 'pairs' = PMI bigrams, 'trigrams' = PMI trigrams,
+    'both' = words+pairs merged, 'all' = words+pairs+trigrams merged.
+    """
+    if mode not in ('words', 'pairs', 'both', 'trigrams', 'all'):
+        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', 'both', 'trigrams', or 'all'")
+    try:
+        data = get_word_bubbles(
+            days=days,
+            from_date=from_date,
+            to_date=to_date,
+            min_tweets=min_tweets,
+            top_n=top_n,
+            mode=mode,
+        )
+        return JSONResponse(data)
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching word bubbles: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch word bubble data")
+
+
+# ─── Benchmark helpers ────────────────────────────────────────────────────────
+
+_TWITTERAPI_SECRET_PATH = Path(
+    os.getenv("TWITTERAPI_SECRET_PATH", "/root/.openclaw/secrets/twitterapi-io.json")
+)
+
+def _load_twitterapi_key() -> str:
+    """Load twitterapi.io API key.
+
+    Priority order:
+    1. TWITTERAPI_IO_KEY / TWITTER_API_KEY env vars (already set by dotenv loader above)
+    2. Via cli.load_config() which does its own .env search (same as cron jobs use)
+    3. Secrets JSON file at TWITTERAPI_SECRET_PATH (server-side fallback)
+    """
+    # 1. Env vars (set by dotenv loader at module load)
+    key = os.getenv("TWITTERAPI_IO_KEY") or os.getenv("TWITTER_API_KEY")
+    if key:
+        return key
+    # 2. Use cli.load_config() — it has its own .env search that works for cron/CLI
+    try:
+        from .cli import load_config as _load_config
+        api_key, _ = _load_config()
+        if api_key:
+            return api_key
+    except Exception:
+        pass
+    # 3. Secrets file (server-side path)
+    try:
+        with open(_TWITTERAPI_SECRET_PATH) as f:
+            return json.load(f)["api_key"]
+    except Exception:
+        pass
+    logger.error("twitterapi.io key not found — set TWITTER_API_KEY in .env or TWITTERAPI_IO_KEY env var")
+    return ""
+
+
+async def fetch_handle_tweets(handle: str, api_key: str, max_tweets: int = 200) -> List[Dict[str, Any]]:
+    """Fetch up to max_tweets tweets from a handle via twitterapi.io.
+
+    Strategy:
+    1. Fetch page 1 to get first batch + cursor
+    2. Walk cursor chain to collect all cursors needed
+    3. Fire all remaining pages in parallel (asyncio.gather)
+
+    The cursor chain must be walked sequentially (each cursor comes from the previous
+    response), but the actual tweet payloads can be fetched in parallel once we have
+    all cursors. We pre-walk to collect N cursors, then fire N concurrent requests.
+    """
+    import asyncio as _asyncio
+
+    url = "https://api.twitterapi.io/twitter/tweet/advanced_search"
+    headers = {"X-API-Key": api_key}
+    base_params = {"query": f"from:{handle} -is:retweet", "queryType": "Top", "count": "40"}
+    pages_needed = max(1, (max_tweets + 39) // 40)  # ceil(max_tweets / 40)
+
+    async def fetch_page(client: httpx.AsyncClient, cursor: Optional[str] = None) -> dict:
+        params = {**base_params}
+        if cursor:
+            params["cursor"] = cursor
+        try:
+            resp = await client.get(url, params=params, headers=headers)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return {}
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            # Page 1 — always sequential to bootstrap cursor chain
+            d1 = await fetch_page(client)
+            page1_tweets = d1.get("tweets") or d1.get("data", {}).get("tweets", [])
+            if not page1_tweets:
+                return []
+
+            all_tweets: List[Dict[str, Any]] = list(page1_tweets)
+            if len(all_tweets) >= max_tweets or not d1.get("has_next_page") or pages_needed <= 1:
+                return all_tweets[:max_tweets]
+
+            # Walk cursor chain to collect cursors for remaining pages
+            cursors: List[str] = []
+            cursor = d1.get("next_cursor") or d1.get("nextCursor")
+            while cursor and len(cursors) < pages_needed - 1:
+                cursors.append(cursor)
+                if len(cursors) >= pages_needed - 1:
+                    break
+                # We need the next cursor — fetch the page to get it
+                # (twitterapi.io cursor chain requires sequential traversal)
+                d_next = await fetch_page(client, cursor)
+                next_tweets = d_next.get("tweets") or d_next.get("data", {}).get("tweets", [])
+                all_tweets.extend(next_tweets)
+                cursor = d_next.get("next_cursor") or d_next.get("nextCursor")
+                if not d_next.get("has_next_page") or not cursor:
+                    break
+                if len(all_tweets) >= max_tweets:
+                    break
+
+            # Fire any truly remaining cursors in parallel (if any left after chain walk)
+            # In practice the cursor chain walk above already fetches sequentially,
+            # so this covers any cursors we collected but haven't fetched yet
+            if cursors:
+                remaining_cursors = [c for c in cursors if c != d1.get("next_cursor")]
+                if remaining_cursors:
+                    tasks = [fetch_page(client, c) for c in remaining_cursors]
+                    results = await _asyncio.gather(*tasks, return_exceptions=True)
+                    for r in results:
+                        if isinstance(r, dict):
+                            pts = r.get("tweets") or r.get("data", {}).get("tweets", [])
+                            all_tweets.extend(pts or [])
+
+        logger.info(f"Fetched {len(all_tweets)} tweets for @{handle}")
+        return all_tweets[:max_tweets]
+    except Exception as e:
+        logger.warning(f"fetch_handle_tweets failed for @{handle}: {e}")
+        return []
+
+
+_STOPWORDS = {
+    'the','a','an','is','are','was','were','be','been','being','have','has','had',
+    'do','does','did','will','would','could','should','may','might','shall','can',
+    'need','dare','ought','used','to','of','in','on','at','by','for','with','about',
+    'against','between','into','through','during','before','after','above','below',
+    'from','up','down','out','off','over','under','again','further','then','once',
+    'and','but','or','nor','not','so','yet','both','either','neither','whether',
+    'i','me','my','myself','we','our','ourselves','you','your','yourself','he',
+    'him','his','himself','she','her','herself','it','its','itself','they','them',
+    'their','themselves','what','which','who','whom','this','that','these','those',
+    'am','if','as','until','while','because','although','since','unless','however',
+    'therefore','thus','hence','also','just','very','too','more','most','some','any',
+    'all','each','every','no','only','same','than','how','when','where','why','via',
+    'its','vs','re','etc',
+}
+
+
+def _score_tweets(
+    tweets: List[Dict[str, Any]],
+    mode: str = 'words',
+    min_tweets: int = 1,
+    top_n: int = 50,
+) -> List[Dict[str, Any]]:
+    """Tokenize tweets and compute IDF/PMI-scored word/bigram data.
+
+    Uses engagement (likes + retweets*3) as a proxy for impressions,
+    since external tweet impressions are not publicly available.
+
+    Returns same shape as get_word_bubbles():
+    [{word, count, avg_impressions, score, is_hashtag, is_bigram}]
+    where avg_impressions = avg engagement score for that word's tweets.
+    """
+    total_tweets = len(tweets)
+    if total_tweets == 0:
+        return []
+
+    word_data: Dict[str, Any] = {}
+    bigram_data: Dict[str, Any] = {}
+    trigram_data: Dict[str, Any] = {}
+    unigram_for_pmi: Dict[str, Any] = {}
+
+    # Build tweet_id -> engagement map (likes + retweets*3 as impression proxy)
+    tweet_engagements: Dict[str, float] = {}
+
+    for idx, tweet in enumerate(tweets):
+        tweet_id = str(idx)
+        likes = int(tweet.get('likeCount') or tweet.get('favorite_count') or 0)
+        rts   = int(tweet.get('retweetCount') or tweet.get('retweet_count') or 0)
+        tweet_engagements[tweet_id] = float(likes + rts * 3)
+
+    for idx, tweet in enumerate(tweets):
+        tweet_id = str(idx)
+        text = tweet.get('text') or tweet.get('full_text') or ''
+
+        # Extract hashtags before stripping
+        hashtags = re.findall(r'#\w+', text.lower())
+
+        text_clean = re.sub(r'https?://\S+', ' ', text.lower())
+        text_clean = re.sub(r'@\w+', ' ', text_clean)
+        text_clean = re.sub(r'#\w+', ' ', text_clean)
+        text_clean = re.sub(r'[^\w\s]', ' ', text_clean)
+        raw_words = text_clean.split()
+
+        ordered_tokens = []
+        for w in raw_words:
+            w = w.strip()
+            if (len(w) >= 3
+                    and w not in _STOPWORDS
+                    and not w.isnumeric()
+                    and w.isalpha()):
+                ordered_tokens.append(w)
+
+        token_set = set(ordered_tokens)
+        for h in hashtags:
+            h = h.strip()
+            if len(h) >= 3:
+                token_set.add(h)
+
+        for token in token_set:
+            if token not in word_data:
+                word_data[token] = {'tweets': set(), 'is_hashtag': token.startswith('#')}
+            word_data[token]['tweets'].add(tweet_id)
+
+        for token in set(ordered_tokens):
+            if token not in unigram_for_pmi:
+                unigram_for_pmi[token] = set()
+            unigram_for_pmi[token].add(tweet_id)
+
+        seen_bigrams: set = set()
+        for i in range(len(ordered_tokens) - 1):
+            a, b = ordered_tokens[i], ordered_tokens[i + 1]
+            bigram = f"{a} {b}"
+            if bigram not in seen_bigrams:
+                seen_bigrams.add(bigram)
+                if bigram not in bigram_data:
+                    bigram_data[bigram] = {'tweets': set()}
+                bigram_data[bigram]['tweets'].add(tweet_id)
+
+        seen_trigrams: set = set()
+        for i in range(len(ordered_tokens) - 2):
+            a, b, c = ordered_tokens[i], ordered_tokens[i + 1], ordered_tokens[i + 2]
+            trigram = f"{a} {b} {c}"
+            if trigram not in seen_trigrams:
+                seen_trigrams.add(trigram)
+                if trigram not in trigram_data:
+                    trigram_data[trigram] = {'tweets': set()}
+                trigram_data[trigram]['tweets'].add(tweet_id)
+
+    def _avg_engagement(tweet_ids: set) -> float:
+        """Average engagement score for a set of tweet IDs."""
+        vals = [tweet_engagements.get(tid, 0.0) for tid in tweet_ids]
+        return round(sum(vals) / len(vals), 1) if vals else 0.0
+
+    def _build_word_results() -> List[Dict[str, Any]]:
+        results = []
+        for word, data in word_data.items():
+            count = len(data['tweets'])
+            if count < min_tweets:
+                continue
+            avg_eng = _avg_engagement(data['tweets'])
+            idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+            score = round(avg_eng * idf, 2)
+            results.append({
+                'word': word,
+                'count': count,
+                'avg_impressions': avg_eng,  # engagement proxy
+                'score': score,
+                'is_hashtag': data['is_hashtag'],
+                'is_bigram': False,
+            })
+        return results
+
+    def _build_bigram_results() -> List[Dict[str, Any]]:
+        bigram_min = max(min_tweets, 2)  # bigrams must appear in 2+ tweets minimum
+        results = []
+        for bigram, data in bigram_data.items():
+            count = len(data['tweets'])
+            if count < bigram_min:
+                continue
+            avg_eng = _avg_engagement(data['tweets'])
+            a, b = bigram.split(' ', 1)
+            pa = len(unigram_for_pmi.get(a, set())) / max(total_tweets, 1)
+            pb = len(unigram_for_pmi.get(b, set())) / max(total_tweets, 1)
+            pab = count / max(total_tweets, 1)
+            pmi = math.log(pab / (pa * pb)) if pa > 0 and pb > 0 else 0.0
+            pmi_weight = max(0.1, pmi)
+            idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+            confidence = min(count / 5.0, 1.0)
+            score = round(avg_eng * idf * pmi_weight * confidence, 2)
+            results.append({
+                'word': bigram,
+                'count': count,
+                'avg_impressions': avg_eng,  # engagement proxy
+                'score': score,
+                'is_hashtag': False,
+                'is_bigram': True,
+            })
+        return results
+
+    def _build_trigram_results() -> List[Dict[str, Any]]:
+        trigram_min = max(min_tweets, 2)  # min 2, user can set higher
+        results = []
+        for trigram, data in trigram_data.items():
+            count = len(data['tweets'])
+            if count < trigram_min:
+                continue
+            avg_eng = _avg_engagement(data['tweets'])
+            parts = trigram.split(' ', 2)
+            a, b, c = parts[0], parts[1], parts[2]
+            pa = len(unigram_for_pmi.get(a, set())) / max(total_tweets, 1)
+            pb = len(unigram_for_pmi.get(b, set())) / max(total_tweets, 1)
+            pc = len(unigram_for_pmi.get(c, set())) / max(total_tweets, 1)
+            pabc = count / max(total_tweets, 1)
+            pmi = math.log(pabc / (pa * pb * pc)) if pa > 0 and pb > 0 and pc > 0 else 0.0
+            pmi_weight = max(0.1, pmi)
+            idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
+            confidence = min(count / 5.0, 1.0)
+            score = round(avg_eng * idf * pmi_weight * confidence, 2)
+            results.append({
+                'word': trigram,
+                'count': count,
+                'avg_impressions': avg_eng,
+                'score': score,
+                'is_hashtag': False,
+                'is_bigram': False,
+                'is_trigram': True,
+            })
+        return results
+
+    if mode == 'pairs':
+        results = _build_bigram_results()
+    elif mode == 'trigrams':
+        results = _build_trigram_results()
+    elif mode == 'both':
+        results = _build_word_results() + _build_bigram_results()
+    elif mode == 'all':
+        results = _build_word_results() + _build_bigram_results() + _build_trigram_results()
+    else:
+        results = _build_word_results()
+
+    results.sort(key=lambda x: x['score'], reverse=True)
+    return results[:top_n]
+
+
+_HANDLE_RE = re.compile(r'^[A-Za-z0-9_]{1,50}$')
+
+
+@app.get("/api/benchmark")
+async def api_benchmark(
+    handle: str = Query(..., description="X/Twitter handle (without @)"),
+    mode: str = Query(default='words', description="Mode: 'words', 'pairs', 'both'"),
+    top_n: int = Query(default=50, ge=1, le=200),
+    min_tweets: int = Query(default=1, ge=1, le=100),
+    max_tweets: int = Query(default=200, ge=50, le=5000, description="Max tweets to fetch"),
+    return_tweets: bool = Query(default=False, description="Include raw tweet objects in response for client-side caching"),
+) -> JSONResponse:
+    """Fetch top 40 tweets from a handle and return word bubble data.
+
+    Returns same shape as /api/word-bubbles.
+    Returns empty list (not 500) if handle is unavailable/suspended.
+    """
+    # Strip leading @ and validate
+    clean_handle = handle.lstrip('@')
+    if not _HANDLE_RE.match(clean_handle):
+        raise HTTPException(status_code=400, detail="Invalid handle: alphanumeric + underscore only, max 50 chars")
+    if mode not in ('words', 'pairs', 'both', 'trigrams', 'all'):
+        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', 'both', 'trigrams', or 'all'")
+
+    api_key = _load_twitterapi_key()
+    if not api_key:
+        logger.error("twitterapi.io key not available — returning empty benchmark")
+        return JSONResponse([])
+
+    tweets = await fetch_handle_tweets(clean_handle, api_key, max_tweets=max_tweets)
+    if not tweets:
+        return JSONResponse([])
+
+    try:
+        data = _score_tweets(tweets, mode=mode, min_tweets=min_tweets, top_n=top_n)
+    except Exception as e:
+        logger.error(f"_score_tweets failed for @{clean_handle}: {e}", exc_info=True)
+        data = []
+    logger.info(f"Benchmark @{clean_handle}: {len(tweets)} tweets → {len(data)} words (mode={mode})")
+    if return_tweets:
+        return JSONResponse({"words": data, "tweets": tweets})
+    return JSONResponse(data)
+
+
+@app.post("/api/benchmark/rescore")
+async def api_benchmark_rescore(
+    tweets: List[Dict[str, Any]] = Body(..., description="Cached tweet objects"),
+    mode: str = Query(default='words'),
+    top_n: int = Query(default=50, ge=1, le=200),
+    min_tweets: int = Query(default=1, ge=1, le=100),
+) -> JSONResponse:
+    """Rescore already-fetched tweets with new parameters (mode/min_tweets/top_n).
+    Accepts the cached tweet list from the frontend — no re-fetching.
+    """
+    if mode not in ('words', 'pairs', 'both', 'trigrams', 'all'):
+        raise HTTPException(status_code=400, detail="mode must be 'words', 'pairs', 'both', 'trigrams', or 'all'")
+    try:
+        data = _score_tweets(tweets, mode=mode, min_tweets=min_tweets, top_n=top_n)
+    except Exception as e:
+        logger.error(f"rescore failed: {e}", exc_info=True)
+        data = []
+    return JSONResponse(data)
 
 
 # Mount static assets if they exist
