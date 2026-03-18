@@ -605,15 +605,7 @@
             <div class="section">
                 <h2>📉 Impression Decay</h2>
                 <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">How impressions accumulate — flattening = post stopped spreading</p>
-                <div class="snapshot-row" id="decaySnapshotRow">
-                    <span class="snapshot-label">Snapshots:</span>
-                    <span class="info-icon" onclick="this.classList.toggle('open')" aria-label="About snapshots">ⓘ<span class="info-tip">Selects which snapshot to use for calculations. A snapshot is a frozen measurement taken at a fixed time after posting (e.g. 'At 24h' = stats recorded 24 hours after the tweet was posted).
 
-⚠️ Snapshots are only available if CypherPulse's data collection was running at that time. Missing snapshots cannot be filled in retroactively.</span></span>
-                    <button class="tf-btn active" disabled>At 24h</button>
-                    <button class="tf-btn active" disabled>At 3d</button>
-                    <button class="tf-btn active" disabled>At 7d</button>
-                </div>
                 <div id="decayChart" class="chart-container" aria-label="Impression decay curve by post type"></div>
             </div>
 
