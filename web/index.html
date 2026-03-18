@@ -647,6 +647,17 @@
                         style="flex:1;min-width:140px;max-width:260px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
                                color:#e2e8f0;border-radius:6px;padding:5px 10px;font-size:0.875rem;"
                         onkeydown="if(event.key==='Enter')runBenchmark()">
+                    <label style="color:#94a3b8;font-size:0.875rem;white-space:nowrap;">
+                        Tweets:
+                        <select id="benchmarkMaxTweets"
+                            style="margin-left:4px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                                   color:#e2e8f0;border-radius:6px;padding:4px 6px;font-size:0.875rem;">
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200" selected>200</option>
+                            <option value="500">500</option>
+                        </select>
+                    </label>
                     <button id="benchmarkBtn" class="tf-btn" onclick="runBenchmark()"
                         style="background:rgba(59,130,246,0.2);border-color:rgba(59,130,246,0.5);">Compare</button>
                     <button class="tf-btn" onclick="clearBenchmark()">Clear</button>
@@ -874,13 +885,15 @@
             _benchmarkHandle = raw;
 
             const btn = document.getElementById('benchmarkBtn');
-            btn.textContent = 'Fetching 200 tweets…';
+            const maxTweets = parseInt(document.getElementById('benchmarkMaxTweets').value) || 200;
+            btn.textContent = `Fetching ${maxTweets} tweets…`;
             btn.disabled = true;
             _showBenchmarkMsg('');
 
             try {
-                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=1`;
-                const data = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(45000) }).then(r => r.json());
+                const params = `handle=${encodeURIComponent(raw)}&mode=${_wordBubbleMode}&top_n=50&min_tweets=1&max_tweets=${maxTweets}`;
+                const timeoutMs = Math.max(30000, maxTweets * 150); // ~150ms per tweet as buffer
+                const data = await fetch(`/api/benchmark?${params}`, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json());
                 _renderBenchmarkData(data, raw);
             } catch(e) {
                 console.error('runBenchmark failed', e);
