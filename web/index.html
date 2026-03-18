@@ -458,6 +458,19 @@
             color: #94a3b8;
         }
 
+        /* Tablet breakpoint */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem 0.75rem;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         @media (max-width: 400px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -1335,14 +1348,17 @@
             tbody.innerHTML = '';
             data.forEach(row => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${row.post_type}</strong></td>
-                    <td>${row.posts}</td>
-                    <td>${row.avg_likes}</td>
-                    <td>${row.avg_replies}</td>
-                    <td>${row.avg_retweets}</td>
-                    <td>${Math.round(row.avg_impressions).toLocaleString()}</td>
-                `;
+                const tdType = document.createElement('td');
+                const strong = document.createElement('strong');
+                strong.textContent = row.post_type;
+                tdType.appendChild(strong);
+                tr.appendChild(tdType);
+                [row.posts, row.avg_likes, row.avg_replies, row.avg_retweets,
+                 Math.round(row.avg_impressions).toLocaleString()].forEach(val => {
+                    const td = document.createElement('td');
+                    td.textContent = val;
+                    tr.appendChild(td);
+                });
                 tbody.appendChild(tr);
             });
         }
@@ -1397,15 +1413,15 @@
                     const h = Math.max(2, Math.round((val / maxImpr) * chartH));
                     const x = x0 + ti * barW;
                     const color = typeColor(type);
-                    bars += `<rect x="${x}" y="${chartH - h}" width="${barW - 2}" height="${h}" fill="${color}" opacity="0.8" rx="2"><title>${type}: ${val} avg impressions on ${date}</title></rect>`;
+                    bars += `<rect x="${x}" y="${chartH - h}" width="${barW - 2}" height="${h}" fill="${color}" opacity="0.8" rx="2"><title>${escapeHtml(type)}: ${val} avg impressions on ${escapeHtml(date)}</title></rect>`;
                 });
-                const shortDate = date.slice(5);
+                const shortDate = escapeHtml(date.slice(5));
                 labels += `<text x="${x0 + groupW/2}" y="${chartH + 16}" text-anchor="middle" fill="#64748b" font-size="10">${shortDate}</text>`;
             });
 
             types.forEach((type, i) => {
                 const color = typeColor(type);
-                legend += `<rect x="${i * 90}" y="0" width="10" height="10" fill="${color}" rx="2"/><text x="${i * 90 + 14}" y="9" fill="#94a3b8" font-size="12">${type}</text>`;
+                legend += `<rect x="${i * 90}" y="0" width="10" height="10" fill="${color}" rx="2"/><text x="${i * 90 + 14}" y="9" fill="#94a3b8" font-size="12">${escapeHtml(type)}</text>`;
             });
 
             const svgW = Math.max(500, dates.length * (groupW + 8));
@@ -1413,6 +1429,15 @@
                 <g transform="translate(10,8)">${bars}${labels}</g>
                 <g transform="translate(10,${chartH + 32})">${legend}</g>
             </svg></div>`;
+        }
+
+        // ═══════════════════════════════════════════════
+        //  UTILITY: HTML ESCAPING
+        // ═══════════════════════════════════════════════
+        function escapeHtml(str) {
+            const s = String(str == null ? '' : str);
+            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         }
 
         // ═══════════════════════════════════════════════
@@ -1479,12 +1504,12 @@
                     const segLabel = (pct > 2.5 && val >= 1)
                         ? `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:10px;white-space:nowrap;pointer-events:none;">${Math.round(val).toLocaleString()}</span>`
                         : '';
-                    segments += `<div title="${t}: ${Math.round(val).toLocaleString()} avg ${valueKey.replace('avg_','')}"
+                    segments += `<div title="${escapeHtml(t)}: ${Math.round(val).toLocaleString()} avg ${escapeHtml(valueKey.replace('avg_',''))}"
                         style="width:${pct}%;background:${typeColor(t)};height:100%;display:inline-block;position:relative;">${segLabel}</div>`;
                 });
 
                 row.innerHTML = `
-                    <div class="bar-label">${axisLabel}</div>
+                    <div class="bar-label">${escapeHtml(axisLabel)}</div>
                     <div class="bar-track" style="padding:0;overflow:hidden;display:flex;align-items:stretch;">
                         ${segments}
                         <span class="bar-value" style="position:static;padding-left:6px;color:#94a3b8;">${Math.round(total).toLocaleString()}</span>
@@ -1599,7 +1624,11 @@
                 const p1 = row.vals[0] != null ? ` 24h: ${row.vals[0]}` : '';
                 const p2 = row.vals[1] != null ? ` | Day1→3: +${row.vals[1]}` : '';
                 const p3 = row.vals[2] != null ? ` | Day3→7: +${row.vals[2]}` : '';
-                item.innerHTML = `<span style="display:inline-block;width:12px;height:3px;border-radius:2px;background:${typeColor(row.post_type)}"></span> ${row.post_type} (n=${row.count})${p1}${p2}${p3}`;
+                const swatch = document.createElement('span');
+                swatch.style.cssText = `display:inline-block;width:12px;height:3px;border-radius:2px;background:${typeColor(row.post_type)}`;
+                item.appendChild(swatch);
+                const label = document.createTextNode(` ${row.post_type} (n=${row.count})${p1}${p2}${p3}`);
+                item.appendChild(label);
                 legendEl.appendChild(item);
             });
 
