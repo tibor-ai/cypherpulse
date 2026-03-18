@@ -456,8 +456,10 @@ def get_decay_curve(
             h24 = d.get('h24')
             h72 = d.get('h72')
             h168 = d.get('h168')
-            d['decay_24_72'] = round(h24 - h72, 1) if h24 is not None and h72 is not None else None
-            d['decay_72_168'] = round(h72 - h168, 1) if h72 is not None and h168 is not None else None
+            # new_* = impressions that arrived in that period (cumulative delta)
+            # e.g. if h24=9 and h72=10, then 1 new impression arrived between day1 and day3
+            d['new_24_72']  = round(h72 - h24,   1) if h24  is not None and h72  is not None else None
+            d['new_72_168'] = round(h168 - h72,  1) if h72  is not None and h168 is not None else None
             result.append(d)
         return result
 
