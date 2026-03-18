@@ -283,32 +283,50 @@ def _load_twitterapi_key() -> str:
     return ""
 
 
-async def fetch_handle_tweets(handle: str, api_key: str) -> List[Dict[str, Any]]:
-    """Fetch top 40 tweets from a handle via twitterapi.io advanced_search.
+async def fetch_handle_tweets(handle: str, api_key: str, max_tweets: int = 200) -> List[Dict[str, Any]]:
+    """Fetch up to max_tweets tweets from a handle via twitterapi.io, paginating with cursor.
 
-    Returns a list of tweet dicts with keys: text, likeCount, retweetCount, createdAt.
-    Returns empty list on any error (suspended/not found/network issue).
+    Returns a list of tweet dicts. Returns empty list on any error.
     """
     url = "https://api.twitterapi.io/twitter/tweet/advanced_search"
-    params = {
-        "query": f"from:{handle} -is:retweet",
-        "queryType": "Top",
-        "count": "40",
-    }
     headers = {"X-API-Key": api_key}
+    all_tweets: List[Dict[str, Any]] = []
+    cursor = None
+
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(url, params=params, headers=headers)
-            if resp.status_code != 200:
-                logger.warning(f"twitterapi.io returned {resp.status_code} for handle={handle}")
-                return []
-            data = resp.json()
-            # API returns tweets at top level: {tweets: [...]} or nested {data: {tweets: [...]}}
-            tweets = data.get("tweets") or data.get("data", {}).get("tweets", [])
-            return tweets or []
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            while len(all_tweets) < max_tweets:
+                params: Dict[str, Any] = {
+                    "query": f"from:{handle} -is:retweet",
+                    "queryType": "Top",
+                    "count": "40",
+                }
+                if cursor:
+                    params["cursor"] = cursor
+
+                resp = await client.get(url, params=params, headers=headers)
+                if resp.status_code != 200:
+                    logger.warning(f"twitterapi.io returned {resp.status_code} for @{handle}")
+                    break
+
+                data = resp.json()
+                page_tweets = data.get("tweets") or data.get("data", {}).get("tweets", [])
+                if not page_tweets:
+                    break
+
+                all_tweets.extend(page_tweets)
+
+                # Follow cursor for next page
+                cursor = data.get("next_cursor") or data.get("nextCursor")
+                has_next = data.get("has_next_page", False)
+                if not cursor or not has_next:
+                    break
+
+        logger.info(f"Fetched {len(all_tweets)} tweets for @{handle}")
+        return all_tweets[:max_tweets]
     except Exception as e:
-        logger.warning(f"fetch_handle_tweets failed for handle={handle}: {e}")
-        return []
+        logger.warning(f"fetch_handle_tweets failed for @{handle}: {e}")
+        return all_tweets  # return whatever we got before the error
 
 
 _STOPWORDS = {
