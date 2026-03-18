@@ -54,3 +54,4 @@ ENV/
 .coverage
 htmlcov/
 Q-REPORT.md
+QA-REPORT.md
