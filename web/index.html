@@ -621,6 +621,22 @@
                 <p class="heatmap-note">Times in UTC</p>
             </div>
 
+            <!-- Word Bubble Chart -->
+            <div class="section">
+                <h2>☁️ Word Bubble Chart</h2>
+                <p style="color:#64748b;font-size:0.85rem;margin-bottom:12px;">Words sized by average 24h impressions — based on tweet text in the selected date range</p>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <label style="color:#94a3b8;font-size:0.875rem;">Min. tweets:
+                        <input type="number" id="wordBubbleMinTweets" value="2" min="1" max="20"
+                            style="width:60px;margin-left:6px;background:rgba(30,41,59,0.8);border:1px solid rgba(148,163,184,0.3);
+                                   color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:0.875rem;"
+                            onchange="reloadWordBubbles()">
+                    </label>
+                </div>
+                <div id="wordBubbleChart"></div>
+                <div id="wordBubbleLegend" style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:0.8rem;color:#94a3b8;flex-wrap:wrap;"></div>
+            </div>
+
             <!-- Top Posts -->
             <div class="section">
                 <h2>🏆 Top 10 Posts by Impressions</h2>
@@ -786,6 +802,173 @@
                 const data = await fetch(`/api/top-posts?limit=10${qp ? '&' + qp : ''}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
                 renderTopPosts(data);
             } catch(e) { console.error('reloadTopPosts failed', e); }
+        }
+
+        // ═══════════════════════════════════════════════
+        //  WORD BUBBLE CHART
+        // ═══════════════════════════════════════════════
+
+        async function reloadWordBubbles() {
+            const qp = buildGlobalQP();
+            const minTweets = document.getElementById('wordBubbleMinTweets').value || 2;
+            const params = [qp, `min_tweets=${minTweets}`, 'top_n=50'].filter(Boolean).join('&');
+            try {
+                const data = await fetch(`/api/word-bubbles?${params}`, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+                renderWordBubbles(data);
+            } catch(e) { console.error('reloadWordBubbles failed', e); }
+        }
+
+        function wordBubbleBlueColor(value, minVal, maxVal) {
+            // Linear interpolation from #e0f2fe (light) to #0369a1 (dark) based on value
+            if (maxVal === minVal) return '#0369a1';
+            const t = (value - minVal) / (maxVal - minVal);
+            // Light: r=224, g=242, b=254 → Dark: r=3, g=105, b=161
+            const r = Math.round(224 + t * (3 - 224));
+            const g = Math.round(242 + t * (105 - 242));
+            const b = Math.round(254 + t * (161 - 254));
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function renderWordBubbles(words) {
+            const el = document.getElementById('wordBubbleChart');
+            const legendEl = document.getElementById('wordBubbleLegend');
+
+            if (!words || words.length === 0) {
+                el.innerHTML = '<p style="color:#64748b;text-align:center;padding:2rem;">No word data yet — tweets need text content and snapshots.</p>';
+                legendEl.innerHTML = '';
+                return;
+            }
+
+            const SVG_W = 560;
+            const GAP = 6;
+            const MIN_R = 18;
+            const MAX_R = 60;
+            const PADDING = 12;
+
+            // Compute radius scale
+            const maxImp = Math.max(...words.map(w => w.avg_impressions));
+            const minImp = Math.min(...words.map(w => w.avg_impressions));
+
+            function getRadius(imp) {
+                if (maxImp === minImp) return (MIN_R + MAX_R) / 2;
+                const t = (imp - minImp) / (maxImp - minImp);
+                return MIN_R + t * (MAX_R - MIN_R);
+            }
+
+            // Get regular words min/max for colour scale
+            const regularWords = words.filter(w => !w.is_hashtag);
+            const regMin = regularWords.length ? Math.min(...regularWords.map(w => w.avg_impressions)) : 0;
+            const regMax = regularWords.length ? Math.max(...regularWords.map(w => w.avg_impressions)) : 1;
+
+            // Layout: row-based packing
+            const circles = words.map(w => ({ ...w, r: getRadius(w.avg_impressions) }));
+
+            // Place circles row by row
+            let rows = [];
+            let currentRow = [];
+            let currentRowWidth = PADDING;
+
+            for (const c of circles) {
+                const needed = (currentRow.length === 0 ? 0 : GAP) + c.r * 2;
+                if (currentRowWidth + needed > SVG_W - PADDING && currentRow.length > 0) {
+                    rows.push(currentRow);
+                    currentRow = [c];
+                    currentRowWidth = PADDING + c.r * 2;
+                } else {
+                    currentRow.push(c);
+                    currentRowWidth += needed;
+                }
+            }
+            if (currentRow.length > 0) rows.push(currentRow);
+
+            // Assign cx, cy
+            let y = PADDING;
+            const placed = [];
+            for (const row of rows) {
+                const rowMaxR = Math.max(...row.map(c => c.r));
+                const rowH = rowMaxR * 2;
+                y += rowMaxR; // center y of this row
+
+                let x = PADDING;
+                for (const c of row) {
+                    x += c.r;
+                    placed.push({ ...c, cx: x, cy: y });
+                    x += c.r + GAP;
+                }
+                y += rowMaxR + GAP;
+            }
+
+            const svgH = y + PADDING;
+
+            // Build SVG
+            const ns = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(ns, 'svg');
+            svg.setAttribute('width', SVG_W);
+            svg.setAttribute('height', svgH);
+            svg.setAttribute('viewBox', `0 0 ${SVG_W} ${svgH}`);
+            svg.style.display = 'block';
+            svg.style.maxWidth = '100%';
+
+            for (const c of placed) {
+                const g = document.createElementNS(ns, 'g');
+                g.style.cursor = 'pointer';
+
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', c.cx);
+                circle.setAttribute('cy', c.cy);
+                circle.setAttribute('r', c.r);
+                circle.setAttribute('fill', c.is_hashtag
+                    ? '#f59e0b'
+                    : wordBubbleBlueColor(c.avg_impressions, regMin, regMax));
+                circle.setAttribute('opacity', '0.9');
+
+                const label = document.createElementNS(ns, 'text');
+                label.setAttribute('x', c.cx);
+                label.setAttribute('y', c.cy);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('dominant-baseline', 'central');
+                const fontSize = Math.max(9, Math.round(c.r * 0.38));
+                label.setAttribute('font-size', fontSize);
+                label.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, sans-serif');
+                label.setAttribute('font-weight', '600');
+                // Text colour: dark on light backgrounds, light on dark
+                const textColor = c.is_hashtag ? '#1c1917' : (c.avg_impressions > (regMin + regMax) / 2 ? '#e0f2fe' : '#0c4a6e');
+                label.setAttribute('fill', textColor);
+                label.setAttribute('pointer-events', 'none');
+
+                // Truncate label if circle too small
+                const maxChars = Math.max(3, Math.floor(c.r / (fontSize * 0.5)));
+                const displayWord = c.word.length > maxChars ? c.word.slice(0, maxChars) + '…' : c.word;
+                label.textContent = displayWord;
+
+                const tip = `${c.word} — avg ${Math.round(c.avg_impressions)} impressions in ${c.count} tweet${c.count !== 1 ? 's' : ''}`;
+
+                g.addEventListener('mouseenter', e => showTooltip(e, tip));
+                g.addEventListener('mousemove',  e => moveTooltip(e));
+                g.addEventListener('mouseleave', () => hideTooltip());
+
+                g.appendChild(circle);
+                g.appendChild(label);
+                svg.appendChild(g);
+            }
+
+            el.innerHTML = '';
+            el.appendChild(svg);
+
+            // Legend
+            legendEl.innerHTML = `
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:14px;height:14px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0;"></span>
+                    Hashtag
+                </span>
+                <span style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:80px;height:14px;border-radius:4px;
+                        background:linear-gradient(to right,#e0f2fe,#0369a1);display:inline-block;flex-shrink:0;"></span>
+                    Regular word (light = fewer impressions, dark = more)
+                </span>
+                <span style="display:flex;align-items:center;gap:6px;color:#64748b;">
+                    Circle size = avg impressions
+                </span>`;
         }
 
         // ─── Info icon: close on outside click (mobile tap support) ───
@@ -1283,6 +1466,7 @@
             renderDecayChart(data.decay);
             renderHeatmap(data.heatmap, currentHeatmapFilter);
             renderTopPosts(data.topPosts);
+            reloadWordBubbles();
 
             updateRefreshIndicator();
         }
@@ -1314,6 +1498,7 @@
             renderDecayChart(data.decay);
             renderHeatmap(data.heatmap, currentHeatmapFilter);
             renderTopPosts(data.topPosts);
+            reloadWordBubbles();
 
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');

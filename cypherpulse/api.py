@@ -18,6 +18,7 @@ from .db import (
     get_trends_by_type,
     get_decay_curve,
     get_heatmap,
+    get_word_bubbles,
 )
 from . import __version__
 
@@ -192,6 +193,32 @@ async def api_heatmap(
     except sqlite3.Error as e:
         logger.error(f"Database error fetching heatmap: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch heatmap data")
+
+
+@app.get("/api/word-bubbles")
+async def api_word_bubbles(
+    days: Optional[int] = Query(default=None, ge=0, le=365, description="Rolling window in days; 0 or omit = all time"),
+    from_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="ISO date YYYY-MM-DD"),
+    min_tweets: int = Query(default=2, ge=1, le=100, description="Minimum tweet count per word"),
+    top_n: int = Query(default=50, ge=1, le=200, description="Maximum number of words to return"),
+) -> JSONResponse:
+    """Get word frequency bubble chart data.
+
+    Returns list of {word, count, avg_impressions, is_hashtag}, sorted by avg_impressions desc.
+    """
+    try:
+        data = get_word_bubbles(
+            days=days,
+            from_date=from_date,
+            to_date=to_date,
+            min_tweets=min_tweets,
+            top_n=top_n,
+        )
+        return JSONResponse(data)
+    except sqlite3.Error as e:
+        logger.error(f"Database error fetching word bubbles: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch word bubble data")
 
 
 # Mount static assets if they exist

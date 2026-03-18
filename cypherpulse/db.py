@@ -464,6 +464,123 @@ def get_decay_curve(
         return result
 
 
+def get_word_bubbles(
+    days: Optional[int] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    min_tweets: int = 2,
+    top_n: int = 50,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Get word frequency and impressions data for bubble chart.
+
+    Tokenizes tweet text, removes stopwords, groups by word, and returns
+    top words by average 24h impressions.
+
+    Args:
+        days: Rolling window in days (default all)
+        from_date: Optional ISO date lower bound (YYYY-MM-DD)
+        to_date: Optional ISO date upper bound (YYYY-MM-DD)
+        min_tweets: Minimum number of tweets a word must appear in
+        top_n: Maximum number of words to return
+        db_path: Optional path to database file
+
+    Returns:
+        List of dicts: {word, count, avg_impressions, is_hashtag}
+    """
+    import re
+
+    STOPWORDS = {
+        'the','a','an','is','are','was','were','be','been','being','have','has','had',
+        'do','does','did','will','would','could','should','may','might','shall','can',
+        'need','dare','ought','used','to','of','in','on','at','by','for','with','about',
+        'against','between','into','through','during','before','after','above','below',
+        'from','up','down','out','off','over','under','again','further','then','once',
+        'and','but','or','nor','not','so','yet','both','either','neither','whether',
+        'i','me','my','myself','we','our','ourselves','you','your','yourself','he',
+        'him','his','himself','she','her','herself','it','its','itself','they','them',
+        'their','themselves','what','which','who','whom','this','that','these','those',
+        'am','if','as','until','while','because','although','since','unless','however',
+        'therefore','thus','hence','also','just','very','too','more','most','some','any',
+        'all','each','every','no','only','same','than','how','when','where','why','via',
+        'its','vs','re','etc',
+    }
+
+    date_frag, date_params = _date_filter_sql(days, from_date, to_date)
+
+    with get_db_context(db_path) as conn:
+        rows = conn.execute(
+            f"""SELECT p.tweet_id, p.tweet_text, s.impressions
+                FROM tweet_performance p
+                JOIN tweet_snapshots s ON s.tweet_id = p.tweet_id
+                WHERE s.snapshot_hours = 24 AND p.tweet_text IS NOT NULL AND {date_frag}""",
+            date_params,
+        ).fetchall()
+
+    # word -> {tweets: set of tweet_ids, impressions_sum, impressions_count}
+    word_data: Dict[str, Any] = {}
+
+    for row in rows:
+        tweet_id = row['tweet_id']
+        text = row['tweet_text'] or ''
+        impressions = row['impressions'] or 0
+
+        # Extract hashtags before stripping
+        hashtags = re.findall(r'#\w+', text.lower())
+
+        # Strip URLs
+        text_clean = re.sub(r'https?://\S+', ' ', text.lower())
+        # Strip @mentions
+        text_clean = re.sub(r'@\w+', ' ', text_clean)
+        # Strip hashtag symbols (already captured above)
+        text_clean = re.sub(r'#\w+', ' ', text_clean)
+        # Strip punctuation and split into words
+        text_clean = re.sub(r'[^\w\s]', ' ', text_clean)
+        regular_words = text_clean.split()
+
+        # Build token set for this tweet (deduplicated per tweet)
+        tokens = set()
+
+        # Add regular words (filtered)
+        for w in regular_words:
+            w = w.strip()
+            if (len(w) >= 3
+                    and w not in STOPWORDS
+                    and not w.isnumeric()
+                    and w.isalpha()):
+                tokens.add(w)
+
+        # Add hashtags (deduplicated)
+        for h in hashtags:
+            h = h.strip()
+            if len(h) >= 3:  # # + at least 2 chars (total 3 matches the global min)
+                tokens.add(h)
+
+        for token in tokens:
+            if token not in word_data:
+                word_data[token] = {'tweets': set(), 'imp_sum': 0}
+            word_data[token]['tweets'].add(tweet_id)
+            word_data[token]['imp_sum'] += impressions
+
+    # Build result list
+    results = []
+    for word, data in word_data.items():
+        count = len(data['tweets'])
+        if count < min_tweets:
+            continue
+        avg_imp = round(data['imp_sum'] / count, 1)
+        results.append({
+            'word': word,
+            'count': count,
+            'avg_impressions': avg_imp,
+            'is_hashtag': word.startswith('#'),
+        })
+
+    # Sort by avg_impressions descending, take top_n
+    results.sort(key=lambda x: x['avg_impressions'], reverse=True)
+    return results[:top_n]
+
+
 def get_heatmap(
     days: Optional[int] = None,
     from_date: Optional[str] = None,
