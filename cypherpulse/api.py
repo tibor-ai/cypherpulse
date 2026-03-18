@@ -21,9 +21,12 @@ try:
         Path.home() / "projects" / "cypherpulse" / ".env",
     ]
     # Load all found .env files (first wins, later ones don't override)
+    import logging as _logging
+    _api_logger = _logging.getLogger(__name__)
     for _env_candidate in _env_search:
         if _env_candidate.exists():
             _load_dotenv(_env_candidate, override=False)
+            _api_logger.info(f"Loaded .env from {_env_candidate}")
 except ImportError:
     pass
 
@@ -259,15 +262,23 @@ def _load_twitterapi_key() -> str:
     """Load twitterapi.io API key.
 
     Priority order:
-    1. TWITTERAPI_IO_KEY environment variable
-    2. TWITTER_API_KEY environment variable (same key, set in .env during install)
-    3. Secrets JSON file at TWITTERAPI_SECRET_PATH
+    1. TWITTERAPI_IO_KEY / TWITTER_API_KEY env vars (already set by dotenv loader above)
+    2. Via cli.load_config() which does its own .env search (same as cron jobs use)
+    3. Secrets JSON file at TWITTERAPI_SECRET_PATH (server-side fallback)
     """
-    # 1. Explicit env var
+    # 1. Env vars (set by dotenv loader at module load)
     key = os.getenv("TWITTERAPI_IO_KEY") or os.getenv("TWITTER_API_KEY")
     if key:
         return key
-    # 2. Secrets file (server-side path)
+    # 2. Use cli.load_config() — it has its own .env search that works for cron/CLI
+    try:
+        from .cli import load_config as _load_config
+        api_key, _ = _load_config()
+        if api_key:
+            return api_key
+    except Exception:
+        pass
+    # 3. Secrets file (server-side path)
     try:
         with open(_TWITTERAPI_SECRET_PATH) as f:
             return json.load(f)["api_key"]
