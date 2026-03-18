@@ -329,19 +329,21 @@ _STOPWORDS = {
 
 
 def _score_tweets(
-    tweet_texts: List[str],
+    tweets: List[Dict[str, Any]],
     mode: str = 'words',
     min_tweets: int = 1,
     top_n: int = 50,
 ) -> List[Dict[str, Any]]:
-    """Tokenize tweet texts and compute IDF/PMI-scored word/bigram data.
+    """Tokenize tweets and compute IDF/PMI-scored word/bigram data.
+
+    Uses engagement (likes + retweets*3) as a proxy for impressions,
+    since external tweet impressions are not publicly available.
 
     Returns same shape as get_word_bubbles():
     [{word, count, avg_impressions, score, is_hashtag, is_bigram}]
-
-    avg_impressions is always 0 for external tweets (we don't have impression data).
+    where avg_impressions = avg engagement score for that word's tweets.
     """
-    total_tweets = len(tweet_texts)
+    total_tweets = len(tweets)
     if total_tweets == 0:
         return []
 
@@ -349,8 +351,18 @@ def _score_tweets(
     bigram_data: Dict[str, Any] = {}
     unigram_for_pmi: Dict[str, Any] = {}
 
-    for idx, text in enumerate(tweet_texts):
+    # Build tweet_id -> engagement map (likes + retweets*3 as impression proxy)
+    tweet_engagements: Dict[str, float] = {}
+
+    for idx, tweet in enumerate(tweets):
         tweet_id = str(idx)
+        likes = int(tweet.get('likeCount') or tweet.get('favorite_count') or 0)
+        rts   = int(tweet.get('retweetCount') or tweet.get('retweet_count') or 0)
+        tweet_engagements[tweet_id] = float(likes + rts * 3)
+
+    for idx, tweet in enumerate(tweets):
+        tweet_id = str(idx)
+        text = tweet.get('text') or tweet.get('full_text') or ''
 
         # Extract hashtags before stripping
         hashtags = re.findall(r'#\w+', text.lower())
@@ -396,18 +408,24 @@ def _score_tweets(
                     bigram_data[bigram] = {'tweets': set()}
                 bigram_data[bigram]['tweets'].add(tweet_id)
 
+    def _avg_engagement(tweet_ids: set) -> float:
+        """Average engagement score for a set of tweet IDs."""
+        vals = [tweet_engagements.get(tid, 0.0) for tid in tweet_ids]
+        return round(sum(vals) / len(vals), 1) if vals else 0.0
+
     def _build_word_results() -> List[Dict[str, Any]]:
         results = []
         for word, data in word_data.items():
             count = len(data['tweets'])
             if count < min_tweets:
                 continue
+            avg_eng = _avg_engagement(data['tweets'])
             idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
-            score = round(idf, 4)  # no impression data → score by IDF only
+            score = round(avg_eng * idf, 2)
             results.append({
                 'word': word,
                 'count': count,
-                'avg_impressions': 0,
+                'avg_impressions': avg_eng,  # engagement proxy
                 'score': score,
                 'is_hashtag': data['is_hashtag'],
                 'is_bigram': False,
@@ -420,6 +438,7 @@ def _score_tweets(
             count = len(data['tweets'])
             if count < min_tweets:
                 continue
+            avg_eng = _avg_engagement(data['tweets'])
             a, b = bigram.split(' ', 1)
             pa = len(unigram_for_pmi.get(a, set())) / max(total_tweets, 1)
             pb = len(unigram_for_pmi.get(b, set())) / max(total_tweets, 1)
@@ -427,11 +446,11 @@ def _score_tweets(
             pmi = math.log(pab / (pa * pb)) if pa > 0 and pb > 0 else 0.0
             pmi_weight = max(0.1, pmi)
             idf = math.log(max(total_tweets, 1) / count) if total_tweets > 0 else 1.0
-            score = round(idf * pmi_weight, 4)
+            score = round(avg_eng * idf * pmi_weight, 2)
             results.append({
                 'word': bigram,
                 'count': count,
-                'avg_impressions': 0,
+                'avg_impressions': avg_eng,  # engagement proxy
                 'score': score,
                 'is_hashtag': False,
                 'is_bigram': True,
@@ -480,8 +499,7 @@ async def api_benchmark(
     if not tweets:
         return JSONResponse([])
 
-    texts = [t.get('text', '') for t in tweets if t.get('text')]
-    data = _score_tweets(texts, mode=mode, min_tweets=min_tweets, top_n=top_n)
+    data = _score_tweets(tweets, mode=mode, min_tweets=min_tweets, top_n=top_n)
     return JSONResponse(data)
 
 
