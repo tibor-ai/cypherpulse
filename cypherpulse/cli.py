@@ -7,6 +7,7 @@ from typing import Tuple
 from dotenv import load_dotenv
 from .collector import scan_tweets, collect_snapshots
 from .db import get_stats, get_performance_by_type, get_top_posts
+from .tweetclaw_import import import_tweetclaw_export
 
 DEFAULT_PORT = 8080
 
@@ -114,13 +115,55 @@ def cmd_serve() -> None:
         
         print(f"\n🚀 Starting CypherPulse dashboard at http://{host}:{port}")
         if host == "127.0.0.1":
-            print("   (Bound to localhost only — set HOST=0.0.0.0 to allow external access)")
+            print("   (Bound to localhost only - set HOST=0.0.0.0 to allow external access)")
         print("   Press Ctrl+C to stop\n")
         
         uvicorn.run(app, host=host, port=port, log_level="info")
     except ImportError:
         print("Error: uvicorn not installed. Run: pip install uvicorn")
         sys.exit(1)
+
+
+def cmd_import_tweetclaw() -> None:
+    """Import a reviewed TweetClaw export into the local analytics database."""
+    if len(sys.argv) < 3:
+        print(
+            "Usage: cypherpulse import-tweetclaw "
+            "<export.json|jsonl|ndjson|csv> [--snapshot-hours N] [--db PATH]"
+        )
+        sys.exit(1)
+
+    source_path = sys.argv[2]
+    snapshot_hours = 24
+    db_path = None
+    args = sys.argv[3:]
+
+    while args:
+        flag = args.pop(0)
+        if flag == "--snapshot-hours" and args:
+            snapshot_hours = int(args.pop(0))
+        elif flag == "--db" and args:
+            db_path = args.pop(0)
+        else:
+            print(f"Unknown import option: {flag}")
+            sys.exit(1)
+
+    try:
+        result = import_tweetclaw_export(
+            source_path,
+            snapshot_hours=snapshot_hours,
+            db_path=db_path,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"Error importing TweetClaw export: {exc}")
+        sys.exit(1)
+    print(
+        "Imported "
+        f"{result['tweets']} tweets and {result['snapshots']} snapshots "
+        f"from {result['rows']} rows"
+    )
+    if result["skipped"]:
+        print(f"Skipped {result['skipped']} rows without tweet IDs")
 
 
 def main() -> None:
@@ -136,6 +179,7 @@ def main() -> None:
         print("  cypherpulse collect   Collect metric snapshots")
         print("  cypherpulse report    Generate analytics report")
         print("  cypherpulse serve     Start web dashboard")
+        print("  cypherpulse import-tweetclaw <path>   Import TweetClaw exports")
         sys.exit(1)
     
     command = sys.argv[1]
@@ -145,6 +189,7 @@ def main() -> None:
         "collect": cmd_collect,
         "report": cmd_report,
         "serve": cmd_serve,
+        "import-tweetclaw": cmd_import_tweetclaw,
     }
     
     if command not in commands:
